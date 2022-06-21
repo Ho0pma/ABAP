@@ -1,0 +1,69 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_CDS_APP
+*&---------------------------------------------------------------------*
+
+class lcl_app definition.
+  public section.
+
+    methods:
+      constructor
+        importing
+          iv_curr type waers
+          iv_lang type spras,
+
+      start,
+      display IMPORTING it_table type any table,
+      select_data.
+
+    data:
+          mv_curr type waers,
+          mv_lang type spras.
+
+endclass.
+
+class lcl_app implementation.
+
+  method constructor.
+
+    mv_curr = iv_curr.
+    mv_lang = iv_lang.
+
+  endmethod.
+
+  method start.
+
+    select_data( ).
+*    display( it_table = gt_data ).
+
+  endmethod.
+
+  method display.
+*
+*    cl_salv_table=>factory(
+*      importing
+*        r_salv_table   = go_salv
+*      changing
+*        t_table        = gt_data
+*    ).
+*
+*     go_salv->display( ).
+*
+  endmethod.
+
+  method select_data.
+
+    select * from Z_task_02( p_language = @p_lang, p_curr = @p_curr )
+    into table @data(gt_data).
+
+    cl_salv_table=>factory(
+      importing
+        r_salv_table   = go_salv
+      changing
+        t_table        = gt_data
+    ).
+
+     go_salv->display( ).
+
+  endmethod.
+
+endclass.

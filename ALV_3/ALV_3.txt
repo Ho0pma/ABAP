@@ -1,0 +1,157 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_ALV_TEST_2
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZAP_ALV_TEST_2 MESSAGE-ID ZAP_ALV_TEST.
+DATA: gv_test_var TYPE i.
+CLASS lcl_main DEFINITION.
+  PUBLIC SECTION.
+
+  DATA:
+        mt_data TYPE TABLE OF sbook,
+        mo_cont TYPE REF TO cl_gui_custom_container,
+        mo_alv TYPE REF TO cl_gui_alv_grid.
+
+  METHODS:
+           select IMPORTING iv_carrid TYPE sbook-carrid,
+           show,
+           handle_toolbar for event toolbar of cl_gui_alv_grid
+        importing e_object e_interactive,
+           handle_user_command for event user_command of cl_gui_alv_grid
+        importing e_ucomm.
+
+ENDCLASS.
+
+CLASS lcl_main IMPLEMENTATION.
+  METHOD select.
+    SELECT *
+    FROM sbook
+    INTO TABLE mt_data
+      WHERE carrid = iv_carrid.
+  ENDMETHOD.
+
+  METHOD show.
+    DATA: ls_layout TYPE lvc_s_layo.
+    IF mo_cont IS INITIAL.
+      gv_test_var = 1.
+      CREATE OBJECT mo_cont
+        exporting
+          container_name              = 'CONT'
+        exceptions
+          cntl_error                  = 1
+          cntl_system_error           = 2
+          create_error                = 3
+          lifetime_error              = 4
+          lifetime_dynpro_dynpro_link = 5
+          others                      = 6
+        .
+    ENDIF.
+    IF mo_cont IS NOT INITIAL.
+
+      IF mo_alv IS INITIAL.
+        CREATE OBJECT mo_alv
+          exporting
+            i_parent                = mo_cont
+          exceptions
+            error_cntl_create       = 1
+            error_cntl_init         = 2
+            error_cntl_link         = 3
+            error_dp_create         = 4
+            others                  = 5
+          .
+      ENDIF.
+
+      IF mo_alv IS NOT INITIAL.
+        ls_layout-sel_mode = 'A'.
+        DATA: lv_name TYPE dd02l-tabname.
+        lv_name = 'SBOOK'.
+        mo_alv->set_table_for_first_display(
+          exporting
+            i_structure_name              = lv_name
+*            is_variant                    =
+*            i_save                        =
+*            i_default                     = 'X'
+            is_layout                     = ls_layout
+          changing
+            it_outtab                     = mt_data
+*            it_fieldcatalog               =
+          exceptions
+            invalid_parameter_combination = 1
+            program_error                 = 2
+            too_many_lines                = 3
+            others                        = 4
+        ).
+        SET HANDLER handle_toolbar FOR mo_alv.
+        SET HANDLER handle_user_command FOR mo_alv.
+        mo_alv->set_toolbar_interactive( ).
+
+      ENDIF.
+
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD handle_toolbar.
+    data: ls_toolbar type stb_button.
+
+    clear ls_toolbar.
+    ls_toolbar-butn_type = 3.
+    insert ls_toolbar into table e_object->mt_toolbar.
+
+    clear ls_toolbar.
+    ls_toolbar-butn_type = 0.
+    ls_toolbar-function = 'BTN1'.
+    ls_toolbar-icon = icon_calculation.
+    ls_toolbar-text = 'Кнопка'.
+    insert ls_toolbar into table e_object->mt_toolbar.
+  ENDMETHOD.
+
+  METHOD handle_user_command.
+    data lt_selected_rows type lvc_t_roid .
+    data ls_selected_row type lvc_s_roid .
+    gv_test_var = 2.
+    case e_ucomm.
+      when 'BTN1'.
+        mo_alv->get_selected_rows(
+          importing
+*            et_index_rows =                  " Indexes of Selected Rows
+            et_row_no     = lt_selected_rows  " Numeric IDs of Selected Rows
+        ).
+        IF lines( lt_selected_rows ) = 0.
+          MESSAGE 'Ничего не выбрано' TYPE 'S' DISPLAY LIKE 'W'.
+        ELSEIF lines( lt_selected_rows ) = 1.
+          READ TABLE lt_selected_rows ASSIGNING FIELD-SYMBOL(<lt_selected_rows>) INDEX 1.
+          IF sy-subrc = 0.
+            MESSAGE s003 WITH <lt_selected_rows>-row_id.
+          ENDIF.
+        ELSEIF lines( lt_selected_rows ) > 1.
+          LOOP AT lt_selected_rows ASSIGNING <lt_selected_rows>.
+            AT FIRST.
+              DATA(lv_first) = <lt_selected_rows>-row_id.
+            ENDAT.
+
+            AT LAST.
+              DATA(lv_last) = <lt_selected_rows>-row_id.
+            ENDAT.
+          ENDLOOP.
+          MESSAGE i004 WITH lv_first lv_last.
+        ENDIF.
+*        message i001.
+*    WHEN .
+      when others.
+    endcase.
+  ENDMETHOD.
+
+ENDCLASS.
+
+PARAMETERS: p_carrid TYPE sbook-carrid.
+DATA: go_main TYPE REF TO lcl_main.
+
+START-OF-SELECTION.
+  CREATE OBJECT go_main.
+  go_main->select( iv_carrid = p_carrid ).
+  CALL SCREEN 900.
+
+INCLUDE zap_alv_test_2_pbo.
+
+INCLUDE zap_alv_test_2_pai.

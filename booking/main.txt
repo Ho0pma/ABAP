@@ -1,0 +1,31 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_BOOKING
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_booking message-id zap_booking.
+
+include zap_booking_top.
+include zap_booking_sel.
+*include zap_booking_intf.
+include zap_booking_def.
+include zap_booking_imp.
+*include zap_booking_hndl.
+*include zap_booking_view.
+*include zap_booking_app.
+include zap_booking_pbo.
+include zap_booking_pai.
+
+start-of-selection.
+
+  go_app = new lcl_app(
+    iv_carrid = p_carrid
+    iv_connid = p_connid
+    iv_fldate = p_fldate
+    iv_bookid = p_bookid
+*    iv_class  = p_class
+  ).
+
+  go_app->start( ).
+
+  call screen 0100.

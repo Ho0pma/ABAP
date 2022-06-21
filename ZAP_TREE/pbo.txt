@@ -1,0 +1,9 @@
+*----------------------------------------------------------------------*
+***INCLUDE ZAP_TREE_PBO.
+*----------------------------------------------------------------------*
+
+module status_0100 output.
+  set pf-status 'ZAP_TREE'.
+* SET TITLEBAR 'xxx'.
+  go_app->screen_0100_pbo( ).
+endmodule.

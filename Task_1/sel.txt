@@ -1,0 +1,28 @@
+*&---------------------------------------------------------------------*
+*& Include          ZIA_FINAL_SSCR
+*&---------------------------------------------------------------------*
+tables: sscrfields.
+
+
+selection-screen pushbutton /pos_low(25) gv_txt user-command on.
+selection-screen pushbutton /pos_low(25) gv_text user-command on1.
+selection-screen pushbutton /pos_low(25) gv_text1 user-command on2.
+
+
+
+at selection-screen.
+  case sscrfields-ucomm.
+    when 'ON'.
+      call transaction 'ZIA_COND_TR'.
+    when 'ON1'.
+      call transaction 'ZIA_PARAM_TR'.
+    when 'ON2'.
+      go_select = new lcl_select( ).
+      call screen 0200.
+
+  endcase.
+
+initialization.
+  gv_txt = 'Maintain condition table'.
+  gv_text = 'Maintain parameters table'.
+  gv_text1 = 'Show data'.

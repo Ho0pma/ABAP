@@ -1,0 +1,38 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_TEST_SELLECT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_test_sellect.
+tables: sbook.
+
+
+types: begin of ts_result,
+         carrid type sbook-carrid,
+         forcuram type sbook-forcuram,
+         passname type sbook-passname,
+       end of ts_result
+       .
+
+data: gs_result  type ts_result,
+      gt_result  type table of ts_result.
+
+start-of-selection.
+
+  select passname sum( forcuram ) as forcuram
+    into corresponding fields of table gt_result
+    from sbook
+    group by passname
+    .
+
+  if sy-subrc <> 0.
+    write: |ohhh|.
+  endif.
+
+
+loop at gt_result into gs_result.
+  write: gs_result-carrid,
+         gs_result-forcuram,
+         gs_result-passname.
+
+endloop.

@@ -1,0 +1,25 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_TASK6_SEL
+*&---------------------------------------------------------------------*
+selection-screen begin of block b1 with frame title text-b01.
+
+    parameters: p_carrid type spfli-carrid obligatory.
+
+    select-options: s_date for gs_sbook-fldate.
+*                p_fldate  type sbook-fldate.
+
+selection-screen end of block b1.
+
+at selection-screen.
+  if p_carrid eq 'X'.
+    authority-check object 'ZPRUCONFID'  id 'ACTVT' field '*'.
+    if sy-subrc <> 0.
+      message e003 with sy-uname.
+*   User &1 doesn\'t have authirozation to run this report!
+    endif.
+    message i002 with sy-uname.
+*   User &1 is OK:)
+
+  endif.
+
+*select-options: s_date for gs_sbook-fldate.

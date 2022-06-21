@@ -1,0 +1,439 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_BOOKING_IMP
+*&---------------------------------------------------------------------*
+
+class lcl_view_handler implementation.
+
+    method handle_double_click.
+
+    data: lv_i type i,
+          lv_j type string.
+
+    lv_i = e_row.
+    lv_j = e_column.
+
+*очищаем структуру перед новым кликом
+    clear gs_seats_places_alt-cellcolors.
+    modify table gt_seats_places_alt from gs_seats_places_alt.
+
+*красим выбранное поле
+    read table gt_seats_places_alt into gs_seats_places_alt index lv_i.
+    ls_cellcolor-fname = lv_j.
+    ls_cellcolor-color-col = '5'.
+    append ls_cellcolor to gs_seats_places_alt-cellcolors.
+    modify table gt_seats_places_alt from gs_seats_places_alt.
+
+*добавляем выбранное поле во второй грид
+    read table mt_sbook assigning field-symbol(<fs_sbook>) with key bookid = p_bookid.
+    lv_j = lv_j+5(1).
+    if sy-subrc = 0.
+       <fs_sbook>-seat = lv_i && lv_j.
+    endif.
+
+* для передачи значений в другую программу
+    gv_seat = <fs_sbook>-seat.
+    export seat = gv_seat to memory id 'AB_ID'.
+
+
+
+*    modify table mt_sbook from ms_sbook.
+
+    mo_view = lcl_view=>get_instance( ).
+    mo_view->refresh( ).
+
+
+
+
+*    mo_view->mo_grid->set_frontend_layout( is_layout = mo_view->ls_layo ).
+
+*    message i000 with lv_i e_column.
+
+  endmethod.
+
+endclass.
+
+class lcl_view implementation.
+
+  method get_instance.
+
+    if mo_instance is not bound.
+      create object mo_instance.
+    endif.
+
+    ro_instance = mo_instance.
+
+  endmethod.
+
+  method constructor.
+
+    prepare_fieldcat( changing ct_fcat = lt_fcat ).
+    prepare_layout( changing cs_layo = ls_layo ).
+    init_containers( ).
+    init_alv_grid( ).
+    make_plane_seating( ).
+*    display( ).
+*    refresh( ).
+
+  endmethod.
+
+  method make_plane_seating.
+
+    read table gt_booking_info assigning field-symbol(<gt_booking_info>) index 1.
+    lv_seat_num = 1. "Обнуляем переменную - цифра ряда места
+
+    case <gt_booking_info>-class.
+      when 'Y'.
+        lv_index_seating = 10.
+        do <gt_booking_info>-zz_ranks_c times.
+          seat_numbers( ).  "цикл по одному ряду
+        enddo.
+      when 'C'.
+        lv_index_seating = 6.
+        do <gt_booking_info>-zz_ranks_b times.
+          seat_numbers( ).
+        enddo.
+      when 'F'.
+        lv_index_seating = 4.
+        do <gt_booking_info>-zz_ranks_f times.
+          seat_numbers( ).
+        enddo.
+
+    endcase.
+  endmethod.
+
+  method seat_numbers.
+
+    lv_alphabet_counter = 0. "Указатель по алфавиту
+   "Цикл по одному ряду
+     do lv_index_seating times.
+
+       lv_seat_char = sy-abcde+lv_alphabet_counter(1). "Записываем букву места
+       lv_seat_fieldname = 'seat_' && sy-abcde+lv_alphabet_counter(1). "Делаем указатель на поле seat_A, seat_B и тд.
+
+       "Делаем assign для обращения к полям
+       assign component lv_seat_fieldname of structure gs_seats_places_alt to field-symbol(<fs>).
+       <fs> = lv_seat_num && lv_seat_char. "Лепим ID места из цифры и буквы
+       gs_seats_places_alt-seat_class = mv_seat_class. "Указываем класс места
+
+       if lv_seat_num <> lv_seat_num_last. "Если текущий ряд отличается от предыдущего
+         append gs_seats_places_alt to gt_seats_places_alt. "Доабвляем новую строку в таблицу
+         lv_seat_num_last = lv_seat_num. "Обновляем переменную - последний ряд
+       endif.
+
+       "Если строка существует, то мы ее обновляем, иначе добавляем новую в условии сверху
+       modify gt_seats_places_alt from gs_seats_places_alt index lv_seat_num.
+       lv_alphabet_counter += 1. "Смещаемся по алфавиту на след. букву
+     enddo.
+
+     lv_seat_num += 1. "Смещаемся на следующий ряд (в методе make_plane_seating)
+  endmethod.
+
+  method init_containers.
+
+    if mo_custom_containter is initial.
+      mo_custom_containter = new cl_gui_custom_container(
+        container_name = mo_custom_container_name
+      ).
+      mo_split_cont = new cl_gui_easy_splitter_container(
+        parent        = mo_custom_containter
+        orientation   = cl_gui_easy_splitter_container=>orientation_horizontal
+      ).
+    endif.
+
+  endmethod.
+
+  method init_alv_grid.
+
+    if mo_custom_containter is not initial.
+      if mo_grid is initial.
+
+        create object mo_grid
+          exporting
+            i_parent                = mo_split_cont->top_left_container  " Parent Container
+          exceptions
+            error_cntl_create       = 1                     " Error when creating the control
+            error_cntl_init         = 2                     " Error While Initializing Control
+            error_cntl_link         = 3                     " Error While Linking Control
+            error_dp_create         = 4                     " Error While Creating DataProvider Control
+            others                  = 5
+          .
+        if sy-subrc <> 0.
+         message id sy-msgid type sy-msgty number sy-msgno
+           with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+        endif.
+
+      endif.
+
+      if mo_grid_result is initial.
+
+        create object mo_grid_result
+          exporting
+            i_parent                = mo_split_cont->bottom_right_container " Parent Container
+          exceptions
+            error_cntl_create       = 1                     " Error when creating the control
+            error_cntl_init         = 2                     " Error While Initializing Control
+            error_cntl_link         = 3                     " Error While Linking Control
+            error_dp_create         = 4                     " Error While Creating DataProvider Control
+            others                  = 5
+          .
+        if sy-subrc <> 0.
+         message id sy-msgid type sy-msgty number sy-msgno
+           with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+        endif.
+      endif.
+
+    endif.
+
+  endmethod.
+
+  method prepare_fieldcat.
+
+    data: ls_fcat             type lvc_s_fcat,
+          lv_alphabet_counter type i,
+          lv_alph_char        type c length 1.
+
+    lv_alphabet_counter = 0.
+    lv_alph_char = sy-abcde+lv_alphabet_counter(1).
+
+    define append_to_fieldcat.
+
+      ls_fcat-fieldname = 'SEAT_' && lv_alph_char.
+      ls_fcat-ref_field = 'SEAT_' && lv_alph_char.
+      ls_fcat-coltext   = 'Seat' && | | && lv_alph_char.
+      ls_fcat-seltext   = 'Seat' && | | && lv_alph_char.
+      ls_fcat-col_pos   = lines( ct_fcat ) + 1 .
+
+      append ls_fcat to ct_fcat.
+      clear ls_fcat.
+
+    end-of-definition.
+
+    read table gt_booking_info assigning field-symbol(<gt_booking_info>) index 1.
+
+    case <gt_booking_info>-class.
+      when 'Y'.
+        do <gt_booking_info>-zz_ranks_c times.
+          append_to_fieldcat.
+          lv_alphabet_counter += 1.
+          lv_alph_char = sy-abcde+lv_alphabet_counter(1).
+        enddo.
+      when 'C'.
+        do <gt_booking_info>-zz_ranks_b times.
+          append_to_fieldcat.
+          lv_alphabet_counter += 1.
+          lv_alph_char = sy-abcde+lv_alphabet_counter(1).
+        enddo.
+      when 'F'.
+        do <gt_booking_info>-zz_ranks_f times.
+          append_to_fieldcat.
+          lv_alphabet_counter += 1.
+          lv_alph_char = sy-abcde+lv_alphabet_counter(1).
+        enddo.
+    endcase.
+
+    if sy-subrc <> 0.
+*     message id sy-msgid type sy-msgty number sy-msgno
+*       with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+    call function 'LVC_FIELDCATALOG_MERGE'
+      exporting
+        i_structure_name       = 'SBOOK'
+      changing
+        ct_fieldcat            = lt_fcat_res
+      exceptions
+        inconsistent_interface = 1
+        program_error          = 2
+        others                 = 3.
+    if sy-subrc <> 0.
+* Implement suitable error handling here
+    endif.
+
+*Дополнение филдкаталога сбука полем Seat
+    ls_fcat-fieldname = 'SEAT'.
+    ls_fcat-ref_field = 'CHAR7'.
+    ls_fcat-coltext   = 'Seat'.
+    ls_fcat-seltext   = 'Seat'.
+    ls_fcat-col_pos   = lines( lt_fcat_res ) + 1 .
+*    clear ls_fcat.
+    append ls_fcat to lt_fcat_res.
+    clear ls_fcat.
+
+
+    do 3 times.
+      delete lt_fcat_res index lines( lt_fcat_res ) - 1.
+    enddo.
+*
+    do 7 times.
+      delete lt_fcat_res index lines( lt_fcat_res ) - 2.
+    enddo.
+
+    do 1 times.
+      delete lt_fcat_res index lines( lt_fcat_res ) - 3.
+    enddo.
+
+    do 3 times.
+      delete lt_fcat_res index lines( lt_fcat_res ) - 4.
+    enddo.
+
+  endmethod.
+
+  method prepare_layout.
+
+    read table gt_booking_info into gs_booking_info index 1.              " чтобы читалась структура в 110
+    cs_layo-grid_title = 'Plane' && | | && gs_booking_info-planetype.
+    cs_layo-ctab_fname = 'CELLCOLORS'.
+    cs_layo-info_fname = 'ROWCOLOR'.
+    cs_layo-stylefname = 'CELLSTYLES'.
+
+  endmethod.
+
+  method display.
+    mo_grid->set_table_for_first_display(
+      exporting
+        is_layout                     = ls_layo                 " Layout
+      changing
+        it_outtab                     = gt_seats_places_alt   " Output Table
+        it_fieldcatalog               = lt_fcat                 " Field Catalog
+      exceptions
+        invalid_parameter_combination = 1                " Wrong Parameter
+        program_error                 = 2                " Program Errors
+        too_many_lines                = 3                " Too many Rows in Ready for Input Grid
+        others                        = 4
+    ).
+
+    if sy-subrc <> 0.
+     message id sy-msgid type sy-msgty number sy-msgno
+       with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+    mo_grid_result->set_table_for_first_display(
+      exporting
+        is_layout                     = ls_layo_res                 " Layout
+      changing
+        it_outtab                     = mt_sbook                 " Output Table
+        it_fieldcatalog               = lt_fcat_res                " Field Catalog
+      exceptions
+        invalid_parameter_combination = 1                " Wrong Parameter
+        program_error                 = 2                " Program Errors
+        too_many_lines                = 3                " Too many Rows in Ready for Input Grid
+        others                        = 4
+    ).
+    if sy-subrc <> 0.
+     message id sy-msgid type sy-msgty number sy-msgno
+       with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+" Регистрация ивентов
+    data(lo_handler) = new lcl_view_handler( ).
+    set handler lo_handler->handle_double_click for mo_grid.
+
+  " Заполнение филдов данными с селекционника
+     read table gt_booking_info into gs_booking_info index 1.
+
+     refresh( ).
+
+  endmethod.
+
+  method refresh.
+
+    data: ls_stable_one type lvc_s_stbl,
+          ls_stable_two type lvc_s_stbl.
+    ls_stable_one = 'XX'.
+    ls_stable_two = 'XX'.
+
+    if mo_grid is not initial.
+
+      mo_grid->refresh_table_display(
+      exporting
+        is_stable      = ls_stable_one
+*        i_soft_refresh =
+      exceptions
+        finished       = 1
+        others         = 2
+      ).
+      if sy-subrc <> 0.
+        message id sy-msgid type sy-msgty number sy-msgno
+          with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      endif.
+
+    endif.
+
+    if mo_grid_result is not initial.
+
+      mo_grid_result->refresh_table_display(
+      exporting
+        is_stable      = ls_stable_two
+      exceptions
+        finished       = 1
+        others         = 2
+      ).
+      if sy-subrc <> 0.
+        message id sy-msgid type sy-msgty number sy-msgno
+          with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      endif.
+
+    endif.
+
+    cl_gui_cfw=>flush( ).
+  endmethod.
+
+endclass.
+
+class lcl_app implementation.
+
+  method constructor.
+
+    mv_carrid = iv_carrid.
+    mv_connid = iv_connid.
+    mv_fldate = iv_fldate.
+    mv_bookid = iv_bookid.
+*    mv_class  = iv_class.
+
+  endmethod.
+
+  method start.
+    select_data( ).
+    mo_view = lcl_view=>get_instance( ).
+  endmethod.
+
+  method select_data.
+                                                                "Можно переписать селект. Сделать селект сингл в структуру
+  select *
+    from sbook inner join sflight
+      on sbook~fldate = sflight~fldate and
+         sbook~carrid = sflight~carrid and
+         sbook~connid = sflight~connid
+    inner join saplane
+      on sflight~planetype = saplane~planetype
+    into corresponding fields of table gt_booking_info
+    where sbook~bookid = mv_bookid and
+          sbook~connid = mv_connid and
+          sbook~fldate = mv_fldate and
+          sbook~carrid = mv_carrid.
+
+    if sy-subrc <> 0.
+      message: 'Not found data!' type 'W'.
+    endif.
+
+  select *
+    from sbook
+    into corresponding fields of table mt_sbook.
+
+  endmethod.
+
+  method screen_0100_pbo.
+
+    mo_view->display( ).
+
+  endmethod.
+
+  method screen_0100_pai.
+
+    case iv_ucomm.
+      when 'BACK' or 'EXIT' or 'CANCEL'.
+        leave to screen 0.
+    endcase.
+
+  endmethod.
+
+endclass.

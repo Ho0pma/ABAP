@@ -1,0 +1,93 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_BOOKING_TOP
+*&---------------------------------------------------------------------*
+
+class:
+  lcl_app definition deferred,
+  lcl_view_handler definition deferred,
+  lcl_view definition deferred.
+
+types: begin of gty_booking_table,
+         carrid     type s_carr_id,
+         connid     type s_conn_id,
+         fldate     type s_date,
+         bookid     type s_book_id,
+         customid   type s_customer,
+         custtype   type s_custtype,
+         class      type s_class,
+         passname   type s_passname,
+         planetype  type s_planetye,
+         seatsmax   type s_seatsmax,
+         seatsocc   type s_seatsocc,
+         seatsmax_b type s_smax_b,
+         seatsocc_b type s_socc_b,
+         seatsmax_f type s_smax_f,
+         seatsocc_f type s_socc_f,
+         zz_ranks_c type ze_rmax_c,
+         zz_ranks_b type ze_rmax_b,
+         zz_ranks_f type ze_rmax_f,
+         seat       type c length 3,
+         seat_class type c length 1,
+         occ_flag   type c length 1,
+       end of gty_booking_table.
+
+
+types: begin of gty_seats_places,
+         seat_class   type c length 1,
+         seat_A       type c length 3,
+         seat_B       type c length 3,
+         seat_C       type c length 3,
+         seat_D       type c length 3,
+         seat_E       type c length 3,
+         seat_F       type c length 3,
+         seat_G       type c length 3,
+         seat_H       type c length 3,
+         seat_I       type c length 3,
+         seat_J       type c length 3,
+         rowcolor(4)  type c,
+         cellcolors   type lvc_t_scol,
+       end of gty_seats_places.
+
+types: begin of gty_result,
+        carrid     type s_carr_id,
+        connid     type s_conn_id,
+        fldate     type s_date,
+        bookid     type s_book_id,
+        customid   type s_customer,
+        custtype   type s_custtype,
+        class      type s_class,
+        forcurkey  type s_curr,
+        passname   type s_passname,
+        seat(7)    type c,
+       end of gty_result.
+
+data: go_app type ref to lcl_app.
+
+
+
+types: gtt_booking_info type standard table of gty_booking_table,
+       gts_booking_info type gty_booking_table.
+
+data:
+      gt_booking_info type gtt_booking_info,
+      gs_booking_info type gts_booking_info.
+
+
+types: gtt_seats_places type standard table of gty_seats_places,
+       gts_seats_places type gty_seats_places.
+
+data: gt_seats_places_alt type  gtt_seats_places,
+      gs_seats_places_alt type  gts_seats_places,
+      gt_seats_places_class type gtt_seats_places.
+
+types:
+      gtt_result type table of gty_result,
+      gts_result type gty_result.
+
+data:
+  "объекты от интерфейса
+      mt_sbook type gtt_result,
+      ms_sbook type gts_result.
+
+data:
+      gv_seat  type ze_seat.

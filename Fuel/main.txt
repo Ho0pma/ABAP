@@ -1,0 +1,35 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_STOCK
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_stock.
+
+
+types:
+    lty_refuel_data type standard table of zsmpru09_wb_refuel_data.
+
+start-of-selection.
+
+  data: lt_refuel_data type lty_refuel_data.
+  data: lt_refuel_data_2 type lty_refuel_data.
+
+
+  perform generate_mock_data
+    tables lt_refuel_data.
+
+  call method zap_calc_stock_remain=>calculatestockremain
+    exporting
+      it_refuel = lt_refuel_data
+    importing
+      et_refuel = lt_refuel_data_2
+      .
+
+
+
+
+
+  BREAK-POINT.
+
+
+include zap_test_stock_distr_f01.

@@ -1,0 +1,9 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_BOOKING_SEL
+*&---------------------------------------------------------------------*
+parameters:
+  p_carrid type s_carr_id default 'lh',
+  p_connid type s_conn_id default '0400',
+  p_fldate type s_date default '20191115',
+  p_bookid type s_book_id default '55'.
+*  p_class  type s_class.

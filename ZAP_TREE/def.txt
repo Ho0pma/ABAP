@@ -1,0 +1,228 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_TREE_TEST_LCL_DEF
+*&---------------------------------------------------------------------*
+
+
+class lcl_view_handler definition.
+  public section.
+    types: begin of sty_agency,
+             agencynum type s_agncynum,
+             name      type s_agncynam,
+             street    type s_street,
+             url       type s_url,
+           end of sty_agency.
+
+    methods:
+      on_node_click for event node_double_click of cl_gui_alv_tree
+        importing node_key sender,
+
+      on_item_click for event item_double_click of cl_gui_alv_tree
+        importing fieldname node_key sender,
+
+      on_double_click_grid for event double_click of cl_gui_alv_grid
+        importing e_row e_column,
+
+      on_toolbar for event toolbar of cl_gui_alv_grid
+        importing e_object e_interactive,
+
+      on_user_command for event user_command of cl_gui_alv_grid
+        importing e_ucomm,
+
+      on_data_changed_finish for event data_changed_finished of cl_gui_alv_grid
+        importing e_modified et_good_cells,
+
+      on_double_click_grid_d for event button_click of cl_gui_alv_grid
+        importing es_col_id es_row_no,
+
+      on_toolbar_click for event before_user_command of cl_gui_alv_grid
+        importing e_ucomm.
+
+    data:
+      mv_selected_node_key type lvc_nkey,
+      mv_row               type lvc_s_row,
+      mv_column            type lvc_s_col,
+      mv_edit              type bool value abap_false.
+
+  private section.
+
+    methods:
+      double_click
+        importing iv_node_key type lvc_nkey,
+
+      print_boarding_pass,
+      toggle_edit.
+endclass.
+
+
+* Singelton class
+class lcl_view definition friends lcl_view_handler.
+  public section.
+    interfaces: lif_types.
+
+    methods:
+      initialization
+        importing
+          it_sflight type lif_types~tty_sflight
+          it_scarr   type lif_types~tty_scarr
+          it_sbook   type lif_types~tty_sbook
+          it_zbookid type lif_types~tty_zbookid,
+      display
+        importing
+          iv_nkey type lvc_nkey optional.
+
+    class-methods:
+      get_instance
+        returning value(ro_instance) type ref to lcl_view.
+
+  private section.
+
+    methods:
+      init_containers,
+      init_tree,
+      init_grid,
+      init_grid_detail,
+      set_tab_dis_gd,
+      prepare_fcat,
+      prepare_gridfcat,
+      prepare_gridfcat_detail,
+      prepare_layout,
+      build_tree_hier,
+      refresh.
+
+    class-data:
+      mo_instance type ref to lcl_view.
+
+    data: mo_custom      type ref to cl_gui_custom_container,
+          mo_cont        type ref to cl_gui_easy_splitter_container,
+          mo_cont_detail type ref to cl_gui_easy_splitter_container,
+          mo_tree        type ref to cl_gui_alv_tree,
+          mo_grid        type ref to cl_gui_alv_grid,
+          mo_grid_detail type ref to cl_gui_alv_grid,
+          mt_treefcat    type lvc_t_fcat,
+          mt_gridfcat    type lvc_t_fcat,
+          mt_gridfcat_d  type lvc_t_fcat,
+          mt_treetab     type lif_types~tty_sflight,
+          mt_treedata    type lif_types~tty_sflight,
+          mt_sflight     type lif_types~tty_sflight,
+          mt_scarr       type lif_types~tty_scarr,
+          mt_sbook       type lif_types~tty_sbook,
+          mt_zbookid     type lif_types~tty_zbookid,
+          ms_details     type lif_types~sty_details,
+          mt_details     type lif_types~tty_details,
+          mo_handler     type ref to lcl_view_handler,
+          mt_selected    type lif_types~tty_sbook,
+          ms_layout      type lvc_s_layo.
+
+
+    constants:
+          mo_custom_container_name(4) type c value 'CONT'.
+endclass.
+
+
+class lcl_app definition final.
+  public section.
+    interfaces: lif_types.
+
+    methods:
+      constructor,
+*        importing iv_carrid type s_carr_id
+*                  iv_fldate type s_date,
+      run,
+      screen_0100_pbo,
+      screen_0100_pai,
+      select_data,
+
+      data_save.
+
+    data:
+      mo_view_lcl type ref to lcl_view.
+
+  private section.
+    data:
+      mv_carrid  type s_carr_id,
+      mv_fldate  type s_date,
+      mt_sbook   type lif_types~tty_sbook,
+      mt_sflight type lif_types~tty_sflight,
+      mt_scarr   type lif_types~tty_scarr,
+      mt_zbookid type lif_types~tty_zbookid.
+endclass.
+
+
+class lcl_db_handler definition.
+
+  public section.
+    interfaces: lif_types.
+
+    class-methods:
+      class_constructor,
+      lock_for_update importing is_line type sbook,
+      append_for_update
+        importing is_line type sbook,
+*        returning value(rv_result) type abap_bool,
+
+      save.
+
+
+  private section.
+
+    class-data:
+      mt_for_update type lif_types~tty_sbook.
+
+endclass.
+
+class lcl_db_handler implementation.
+
+  method append_for_update.
+
+*    rv_result = abap_false.
+*
+*    call function 'ENQUEUE_ESBOOK'
+*      exporting
+*        mode_sbook     = 'R'
+**       MANDT          = SY-MANDT
+*        carrid         = is_line-carrid
+*        connid         = is_line-connid
+*        fldate         = is_line-fldate
+*        bookid         = is_line-bookid
+**       X_CARRID       = ' '
+**       X_CONNID       = ' '
+**       X_FLDATE       = ' '
+**       X_BOOKID       = ' '
+**       _SCOPE         = '2'
+**       _WAIT          = ' '
+**       _COLLECT       = ' '
+*      exceptions
+*        foreign_lock   = 1
+*        system_failure = 2
+*        others         = 3.
+*    if sy-subrc = 0.
+*      append is_line to mt_for_update.
+*      rv_result = abap_true.
+*    endif.
+
+    append is_line to mt_for_update.
+
+  endmethod.
+
+  method lock_for_update.
+
+  endmethod.
+
+  method class_constructor.
+
+  endmethod.
+
+  method save.
+
+    update sbook from table mt_for_update.
+    if sy-subrc eq 0.
+      commit work.
+      message: 'Data save successfully' type 'S'.
+    else.
+      rollback work.
+      message: 'Something wrong! Data don''t save' type 'W'.
+    endif.
+
+  endmethod.
+
+endclass.

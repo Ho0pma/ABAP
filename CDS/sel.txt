@@ -1,0 +1,6 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_CDS_SEL
+*&---------------------------------------------------------------------*
+parameters:
+  p_curr type waers default 'USD',
+  p_lang type spras default sy-langu.

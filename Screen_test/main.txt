@@ -1,0 +1,48 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_SCREEN_TEST
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_screen_test.
+
+tables: spfli,
+        sdyn_conn.
+
+TYPES: BEGIN OF gtyp_s_checkbox,
+    var1 TYPE c,
+    var2 TYPE c,
+    var3 TYPE c,
+       END OF gtyp_s_checkbox.
+
+data: gs_spfli type spfli,
+      gt_spfli type table of spfli,
+      gv_test1 type string,
+      gv_icon  type icons-text,
+      gs_checkbox TYPE gtyp_s_checkbox,
+      gs_radiobutton TYPE gtyp_s_checkbox,
+      gv_invisible TYPE c,
+      gv_input  TYPE c,
+      gv_button TYPE c VALUE IS INITIAL.
+
+select *
+  from spfli
+  into table gt_spfli.
+
+if sy-subrc = 0.
+
+  read table gt_spfli into gs_spfli index 2.
+  move-corresponding gs_spfli to spfli.
+  move-corresponding gs_spfli to sdyn_conn.
+
+  gv_test1 = gs_spfli-cityfrom && | -> | && gs_spfli-cityto.
+
+endif.
+gs_radiobutton-var1 = 'X'.
+gv_input = 1.
+
+
+call screen 901.
+
+include zap_screen_test_user_commani01.
+
+include zap_screen_test_status_0901o01.

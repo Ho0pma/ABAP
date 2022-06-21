@@ -1,0 +1,13 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_TREE_TOP
+*&---------------------------------------------------------------------*
+
+class lcl_view_handler definition deferred.
+class lcl_app definition deferred.
+class lcl_view definition deferred.
+
+data:
+      gt_treedata type standard table of sflight,
+      go_app      type ref to lcl_app,
+      g_max       type i value 255,
+      gv_seat  type ze_seat.

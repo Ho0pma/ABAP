@@ -1,0 +1,25 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_TREE_LIF
+*&---------------------------------------------------------------------*
+
+interface lif_types.
+  types: begin of sty_details,
+           id        type s_customer,
+           name      type s_custname,
+           street    type s_street,
+           telephone type s_phoneno,
+           agencynum type s_agncynum,
+           ag_name   type s_agncynam,
+           ag_street type s_street,
+           url       type s_url,
+           seat   type ze_seat,
+         end of sty_details.
+
+  types:
+    tty_sflight type standard table of sflight,
+    tty_scarr   type hashed table of scarr with unique key carrid,
+    tty_sbook   type standard table of sbook,
+    tty_zbookid type standard table of zbookid,
+    tty_details type standard table of sty_details.
+
+endinterface.

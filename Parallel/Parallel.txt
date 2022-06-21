@@ -1,0 +1,209 @@
+&---------------------------------------------------------------------*
+*& Report ZAP_PARALLEL
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_parallel.
+
+types: begin of sty_carriers,
+        carrid type s_carr_id,
+       end of sty_carriers.
+
+types: tty_carriers type standard table of sty_carriers.
+
+types: begin of gty_result,
+         carrid       type s_carr_id,
+         loccuram     type s_l_cur_pr,
+         paymentsum   type s_sum,
+
+       end of gty_result.
+types: gtt_result type standard table of gty_result.
+
+data:
+      gt_result type gtt_result,
+      gt_carr   type tty_carriers.
+
+data:
+      go_salv type ref to cl_salv_table.
+
+constants: gc_serv_group type spta_rfcgr value 'parallel_generators'.
+
+select distinct
+       carrid
+  from sflight
+  into corresponding fields of table gt_carr.
+
+call function 'SPTA_PARA_PROCESS_START_2'
+  exporting
+    server_group             = gc_serv_group
+    before_rfc_callback_form = 'BEFORE_RFC'
+    in_rfc_callback_form     = 'IN_RFC'
+    after_rfc_callback_form  = 'AFTER_RFC'
+    callback_prog            = sy-repid
+  changing
+    user_param               = gt_carr
+  exceptions
+    invalid_server_group     = 1
+    no_resources_available   = 2
+    others                   = 3.
+if sy-subrc <> 0.
+  message id sy-msgid type sy-msgty number sy-msgno
+    with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+endif.
+
+  cl_salv_table=>factory(
+      importing
+        r_salv_table   = go_salv
+      changing
+        t_table        = gt_result
+    ).
+
+     go_salv->display( ).
+
+
+form before_rfc
+  using    is_before_rfc_imp     type spta_t_before_rfc_imp
+  changing es_before_rfc_exp     type spta_t_before_rfc_exp
+           it_rfcdata            type spta_t_indxtab
+           ct_failed_objects     type spta_t_failed_objects
+           et_objects_in_process type spta_t_objects_in_process
+           it_data               type tty_carriers.
+  data:
+        ls_data      type sty_carriers,
+        lv_tab_lines type i,
+        lv_max_tasks type i,
+        lv_cnt       type i,
+        lt_package   type tty_carriers.
+
+  statics: sv_package_size type i.
+
+  perform get_max_tasks changing lv_max_tasks.
+
+  if sv_package_size is initial.
+    lv_tab_lines = lines( gt_carr ).
+    sv_package_size = lv_tab_lines / lv_max_tasks.
+    if sv_package_size = 0.
+      sv_package_size = 1.
+    endif.
+  endif.
+
+  lv_cnt = 0.
+  loop at gt_carr into ls_data.
+    if lv_cnt < sv_package_size.
+      append ls_data to lt_package.
+      delete gt_carr index 1.
+      lv_cnt += 1.
+    else.
+      exit.
+    endif.
+  endloop.
+
+  if lines( gt_carr ) < sv_package_size.
+    loop at gt_carr into ls_data.
+      append ls_data to lt_package.
+      delete gt_carr index 1.
+    endloop.
+  endif.
+
+  call function 'SPTA_INDX_PACKAGE_ENCODE'
+    exporting
+      data    = lt_package
+    importing
+      indxtab = it_rfcdata.
+
+  if lt_package is not initial.
+    es_before_rfc_exp-start_rfc = 'X'.
+  else.
+    clear es_before_rfc_exp-start_rfc.
+    return.
+  endif.
+endform.
+
+
+form get_max_tasks
+  changing cv_max_tasks type i.
+"
+  statics: sv_max_tasks type i.
+  data: lv_act_session type i,
+        lv_max_session type i.
+
+  if sv_max_tasks is not initial.
+  "
+    cv_max_tasks = sv_max_tasks.
+    return.
+  "
+  endif.
+
+  call function 'TH_USER_INFO'
+    importing
+      act_sessions        = lv_act_session
+      max_sessions        = lv_max_session
+    .
+
+  cv_max_tasks = sv_max_tasks = lv_max_session - lv_act_session - 1.
+"
+endform.
+
+
+form in_rfc
+  using    is_in_rfc_imp type spta_t_in_rfc_imp
+  changing es_in_rfc_exp type spta_t_in_rfc_exp
+           it_rfcdata    type spta_t_indxtab.
+  "
+  data: lt_data   type tty_carriers,
+        lt_res    type gtt_result,
+        lt_result type gtt_result.
+
+  call function 'SPTA_INDX_PACKAGE_DECODE'
+    exporting
+      indxtab = it_rfcdata
+    importing
+      data    = lt_data.
+
+  loop at lt_data assigning field-symbol(<fs_data>).
+    select sbook~carrid, sum( sbook~loccuram ) as loccuram, sum( distinct sflight~paymentsum ) as paymentsum
+      from sbook inner join sflight
+      on sbook~carrid = sflight~carrid and
+       sbook~connid = sflight~connid and
+       sbook~fldate = sflight~fldate
+      where cancelled <> 'X'
+        and sbook~carrid = @<fs_data>-carrid
+      group by sbook~carrid
+      order by sbook~carrid
+      into corresponding fields of table @lt_res.
+
+      read table lt_res into data(ls_res) index 1.
+      append ls_res to lt_result.
+      clear ls_res.
+  endloop.
+
+  call function 'SPTA_INDX_PACKAGE_ENCODE'
+    exporting
+      data    = lt_result
+    importing
+      indxtab = it_rfcdata.
+  "
+endform.
+
+
+form after_rfc
+  using    it_rfcdata            type spta_t_indxtab
+           if_rfcsubrc           type sy-subrc
+           if_rfcmsg             type spta_t_rfcmsg
+           it_objects_in_process type spta_t_objects_in_process
+           is_after_rfc_imp      type spta_t_after_rfc_imp
+  changing es_after_rfc_exp      type spta_t_after_rfc_exp
+           cs_user_param         type tty_carriers.
+
+  data: lt_data type gtt_result.
+
+  call function 'SPTA_INDX_PACKAGE_DECODE'
+    exporting
+      indxtab = it_rfcdata
+    importing
+      data    = lt_data.
+
+  loop at lt_data assigning field-symbol(<fs_data>).
+    append <fs_data> to gt_result.
+  endloop.
+endform.

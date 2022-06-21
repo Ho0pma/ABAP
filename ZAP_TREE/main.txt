@@ -1,0 +1,20 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_TREE
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_tree.
+
+include zap_tree_top.
+include zap_tree_lif.
+include zap_tree_def.
+include zap_tree_imp.
+include zap_tree_pbo.
+include zap_tree_pai.
+
+start-of-selection.
+
+  go_app = new lcl_app(  ).
+  go_app->run( ).
+
+  call screen 100.

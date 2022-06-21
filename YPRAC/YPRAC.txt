@@ -1,0 +1,134 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_YPRAC
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZAP_YPRAC MESSAGE-ID Z_YPRAC.
+
+TABLES: bkpf.
+
+SELECT-OPTIONS: pa_bukrs FOR bkpf-bukrs,
+                pa_gjahr FOR bkpf-gjahr.
+
+TYPES: BEGIN OF ts_local,
+         uname TYPE sy-uname,
+         date  TYPE sy-datum,
+         time  TYPE sy-uzeit,
+       END OF ts_local
+       .
+
+TYPES: BEGIN OF ts_bseg,
+         bukrs TYPE bseg-bukrs,
+         belnr TYPE bseg-belnr,
+         gjahr TYPE bseg-gjahr,
+         shkzg TYPE bseg-shkzg,
+         wrbtr TYPE bseg-wrbtr,
+       END OF ts_bseg
+       .
+
+TYPES: BEGIN OF ts_result,
+         bukrs   TYPE bkpf-bukrs,
+         gjahr   TYPE bkpf-gjahr,
+         blart   TYPE bkpf-blart,
+         ltext   TYPE t003t-ltext,
+         waers   TYPE bkpf-waers,
+         bldat   TYPE bkpf-bldat,
+         budat   TYPE bkpf-budat,
+         wrbtr_1 TYPE bseg-wrbtr,
+         wrbtr_2 TYPE bseg-wrbtr,
+         belnr   TYPE bkpf-belnr,
+       END OF ts_result
+       .
+
+DATA: gs_local   TYPE ts_local,
+      gt_bkpf    TYPE TABLE OF bkpf,
+      gs_result  TYPE ts_result,
+      gt_result  TYPE TABLE OF ts_result,
+      gs_bseg    TYPE ts_bseg,
+      gt_bseg    TYPE TABLE OF ts_bseg,
+      gv_wrbtr_1 TYPE bseg-wrbtr,
+      gv_wrbtr_2 TYPE bseg-wrbtr
+      .
+
+INITIALIZATION.
+  gs_local-uname = sy-uname.
+  gs_local-date  = sy-datum.
+  gs_local-time  = sy-uzeit.
+
+START-OF-SELECTION.
+
+* First select
+
+  SELECT *
+    FROM bkpf INNER JOIN t003t
+      ON bkpf~blart = t003t~blart          " почему именно по бларту?
+    INTO CORRESPONDING FIELDS OF TABLE gt_result
+    WHERE bukrs IN pa_bukrs AND
+          gjahr IN pa_gjahr AND
+          spras = sy-langu.                " ????
+
+  IF sy-subrc <> 0.
+    MESSAGE: e000.
+  ENDIF.
+
+  SORT gt_result BY bukrs
+                    gjahr.
+
+  DELETE ADJACENT DUPLICATES FROM gt_result.
+
+*Second select
+
+  SELECT bukrs belnr gjahr shkzg wrbtr
+    FROM bseg
+    INTO CORRESPONDING FIELDS OF TABLE gt_bseg
+    FOR ALL ENTRIES IN gt_result              " для всех возможных сущностей?
+    WHERE bukrs = gt_result-bukrs
+      AND gjahr = gt_result-gjahr
+      AND belnr = gt_result-belnr.
+
+    IF sy-subrc <> 0.
+      MESSAGE: 'Data Not Found' TYPE 'I'.
+    ENDIF.
+
+LOOP AT gt_result INTO gs_result.
+
+  CLEAR: gv_wrbtr_1, gv_wrbtr_2.     " ???
+
+    LOOP AT gt_bseg INTO gs_bseg
+      WHERE bukrs = gs_result-bukrs
+        AND belnr = gs_result-belnr
+        AND gjahr = gs_result-gjahr.
+
+      IF gs_bseg-shkzg = 'H'.
+        gv_wrbtr_1 += gs_bseg-wrbtr.
+      ELSE.
+        gv_wrbtr_2 += gs_bseg-wrbtr.
+      ENDIF.
+
+    ENDLOOP.
+
+  gs_result-wrbtr_1 = gv_wrbtr_1.
+  gs_result-wrbtr_2 = gv_wrbtr_2.
+
+  MODIFY gt_result FROM gs_result.
+
+ENDLOOP.
+
+  WRITE:  '|','BURKS','|','GJAHR','|','  BELNR   ','|','BLART',  '|'
+         ,'        LTEXT       ','|','WAERS','|','   BLDAT  ','|'
+         ,'   BUDAT  ','|','            WRBTR_H           ','|','WRBTR_S'.
+  WRITE: / '---------------------------------------------------------------------------------------------------------------------------------------------------'.
+
+LOOP AT gt_result INTO gs_result.
+  WRITE: / '|', gs_result-bukrs, ' |', gs_result-gjahr, ' |', gs_result-belnr
+          ,'|', gs_result-blart, '   |', gs_result-ltext, '|', gs_result-waers
+          ,'|', gs_result-bldat, '|', gs_result-budat, '|', gs_result-wrbtr_1
+          ,'|', gs_result-wrbtr_2,
+         / '---------------------------------------------------------------------------------------------------------------------------------------------------'.
+ENDLOOP.
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""$"$\SE:(1) Include ZAP_YPRAC, End                                                                                                                            S
+*$*$-Start: (1)---------------------------------------------------------------------------------$*$*
+ENHANCEMENT 1  ZAP_ENHANCEMENT.    "active version
+ WRITE: 'lol'.
+ENDENHANCEMENT.
+*$*$-End:   (1)---------------------------------------------------------------------------------$*$*

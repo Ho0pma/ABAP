@@ -1,0 +1,249 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_TASK6_IMP
+*&---------------------------------------------------------------------*
+class lcl_view_handler implementation.
+
+  method handle_double_click.
+
+    read table gt_tab_two into gs_tab_two INDEX e_row.
+
+    data:
+          lv_bdate    type gts_tab_two-order_date,
+          lv_agncynum type gts_tab_two-agencynum.
+
+*        SET PF-STATUS 'STATUS_100'.
+    lv_bdate = gs_tab_two-order_date.
+    lv_agncynum = gs_tab_two-agencynum.
+*          SET TITLEBAR .
+    message i001 with lv_bdate lv_agncynum.
+
+  endmethod.
+
+endclass.
+
+class lcl_view implementation.
+
+  method get_instance.
+
+    if mo_instance is not bound.
+      create object mo_instance.
+    endif.
+
+    ro_instance = mo_instance.
+
+  endmethod.
+
+  method constructor.
+
+    prepare_fieldcat( ).
+    init_containers( ).
+    init_alv_grid( ).
+
+  endmethod.
+
+  method prepare_fieldcat.
+
+  call function 'LVC_FIELDCATALOG_MERGE'
+      exporting
+        i_structure_name       = 'SBOOK'
+      changing
+        ct_fieldcat            = lt_fcat_tab2
+      exceptions
+        inconsistent_interface = 1
+        program_error          = 2
+        others                 = 3.
+    if sy-subrc <> 0.
+* Implement suitable error handling here
+    endif.
+
+    do 3 times.
+      delete lt_fcat_tab2 index lines( lt_fcat_tab2 ).
+    enddo.
+    do 5 times.
+      delete lt_fcat_tab2 index lines( lt_fcat_tab2 ) - 1.
+    enddo.
+    do 2 times.
+      delete lt_fcat_tab2 index lines( lt_fcat_tab2 ) - 3.
+    enddo.
+    do 4 times.
+      delete lt_fcat_tab2 index lines( lt_fcat_tab2 ) - 5.
+    enddo.
+
+
+  endmethod.
+
+  method init_containers.
+
+    if mo_custom_containter_tab2 is initial.
+      mo_custom_containter_tab2 = new cl_gui_custom_container(
+        container_name = mo_custom_container_name
+      ).
+    endif.
+
+  endmethod.
+
+  method init_alv_grid.
+
+    if mo_custom_containter_tab2 is not initial.
+      if mo_grid_tab2 is initial.
+        create object mo_grid_tab2
+          exporting
+            i_parent                = mo_custom_containter_tab2  " Parent Container
+          exceptions
+            error_cntl_create       = 1                     " Error when creating the control
+            error_cntl_init         = 2                     " Error While Initializing Control
+            error_cntl_link         = 3                     " Error While Linking Control
+            error_dp_create         = 4                     " Error While Creating DataProvider Control
+            others                  = 5
+          .
+        if sy-subrc <> 0.
+         message id sy-msgid type sy-msgty number sy-msgno
+           with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+        endif.
+      endif.
+    endif.
+
+  endmethod.
+
+  method display.
+
+     read table gt_tab_one into gs_tab_one index 1.
+
+     mo_grid_tab2->set_table_for_first_display(
+*      exporting
+*        is_layout                     = ls_layo_tab1                 " Layout
+      changing
+        it_outtab                     = gt_tab_two                 " Output Table
+        it_fieldcatalog               = lt_fcat_tab2                " Field Catalog
+      exceptions
+        invalid_parameter_combination = 1                " Wrong Parameter
+        program_error                 = 2                " Program Errors
+        too_many_lines                = 3                " Too many Rows in Ready for Input Grid
+        others                        = 4
+    ).
+    if sy-subrc <> 0.
+     message id sy-msgid type sy-msgty number sy-msgno
+       with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+    " Регистрация ивентов
+    data(lo_handler) = new lcl_view_handler( ).
+    set handler lo_handler->handle_double_click for mo_grid_tab2.
+
+*    refresh( ).
+
+  endmethod.
+
+  method refresh.
+
+    data ls_stable type lvc_s_stbl.
+    ls_stable = 'XX'.
+
+    if mo_grid_tab2 is not initial.
+
+      mo_grid_tab2->refresh_table_display(
+      exporting
+        is_stable      = ls_stable
+*        i_soft_refresh =
+      exceptions
+        finished       = 1
+        others         = 2
+      ).
+      if sy-subrc <> 0.
+        message id sy-msgid type sy-msgty number sy-msgno
+          with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      endif.
+
+    endif.
+
+    cl_gui_cfw=>flush( ).
+  endmethod.
+
+endclass.
+
+class lcl_app implementation.
+
+  method constructor.
+
+    mv_carrid = iv_carrid.
+    mv_fldate = iv_fldate.
+*
+*    iv_carrid = mv_carrid.
+*    iv_fldate = mv_fldate.
+
+  endmethod.
+
+  method start.
+    check_sel( ).
+    select_data( ).
+    mo_view = lcl_view=>get_instance( ).
+
+  endmethod.
+
+
+  method screen_0100_pbo.
+
+    case container-activetab.
+      when 'TAB1'.
+        gv_dynnr = '0201'.
+      when 'TAB2'.
+        gv_dynnr = '0202'.
+      when others.
+        gv_dynnr = '0201'.
+        container-activetab = 'TAB1'.
+    endcase.
+
+    mo_view->display( ).
+
+  endmethod.
+
+  method select_data.
+
+    select *
+    from sbook inner join scarr
+      on sbook~carrid = scarr~carrid
+    inner join spfli
+      on sbook~carrid = spfli~carrid
+    into corresponding fields of table gt_tab_one
+    where sbook~carrid = mv_carrid and
+          sbook~fldate in mv_fldate.
+
+*заполняем структуру для селекта ниже
+    read table gt_tab_one into gs_tab_one index 1.
+
+    select *
+      from sbook
+      into corresponding fields of table gt_tab_two
+      where sbook~carrid = gs_tab_one-carrid and
+            sbook~fldate = gs_tab_one-fldate and
+            sbook~connid = gs_tab_one-connid.
+
+  endmethod.
+
+  method check_sel.
+    if sy-langu <> 'RU'.
+      if mv_carrid = 'AA' or
+         mv_carrid = 'AZ' or
+         mv_carrid = 'DL' or
+         mv_carrid = 'JL'.
+         message w000.
+         leave to screen 1000.
+      endif.
+    endif.
+
+  endmethod.
+
+  method screen_0100_pai.
+
+    case iv_ucomm.
+      when 'BACK' or 'EXIT' or 'CANCEL'.
+        leave to screen 0.
+    endcase.
+
+    if ok_code = 'TAB1' or ok_code = 'TAB2'.
+      container-activetab = ok_code.
+    endif.
+
+  endmethod.
+
+endclass.

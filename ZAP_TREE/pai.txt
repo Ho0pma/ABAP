@@ -1,0 +1,11 @@
+*----------------------------------------------------------------------*
+***INCLUDE ZAP_TREE_PAI.
+*----------------------------------------------------------------------*
+
+module user_command_0100 input.
+  go_app->screen_0100_pai( ).
+endmodule.
+
+module exit input.
+  leave program.
+endmodule.

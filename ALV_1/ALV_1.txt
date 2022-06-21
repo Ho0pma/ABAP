@@ -1,0 +1,228 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_ALV_CONT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_alv_cont.
+
+data: gt_spfli           type table of spfli,
+      go_simple_cont     type ref to cl_gui_container,
+      go_cont            type ref to cl_gui_custom_container,
+      go_alv             type ref to cl_gui_alv_grid,
+      go_dock_cont       type ref to cl_gui_docking_container,
+      go_split_cont      type ref to cl_gui_splitter_container,
+      go_easy_split_cont type ref to cl_gui_easy_splitter_container.
+
+include zap_alv_cont_pbo.
+include zap_alv_cont_user_pai.
+
+form output_alv.
+
+  create object go_cont
+    exporting
+*     parent                      =                  " Parent container
+      container_name              = 'CONT1'                 " Name of the Screen CustCtrl Name to Link Container To
+*     style                       =                  " Windows Style Attributes Applied to this Container
+*     lifetime                    = lifetime_default " Lifetime
+*     repid                       =                  " Screen to Which this Container is Linked
+*     dynnr                       =                  " Report To Which this Container is Linked
+*     no_autodef_progid_dynnr     =                  " Don't Autodefined Progid and Dynnr?
+    exceptions
+      cntl_error                  = 1                " CNTL_ERROR
+      cntl_system_error           = 2                " CNTL_SYSTEM_ERROR
+      create_error                = 3                " CREATE_ERROR
+      lifetime_error              = 4                " LIFETIME_ERROR
+      lifetime_dynpro_dynpro_link = 5                " LIFETIME_DYNPRO_DYNPRO_LINK
+      others                      = 6.
+  if sy-subrc <> 0.
+    message id sy-msgid type sy-msgty number sy-msgno
+      with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+*  if go_cont is  not initial.
+*    go_simple_cont = go_cont.
+*    perform create_alv changing go_simple_cont.
+*  endif.
+
+
+endform.
+
+form output_dock_alv.
+
+  create object go_dock_cont
+    exporting
+*     parent                      =                  " Parent container
+      repid                       = sy-repid                 " Report to Which This Docking Control is Linked
+      dynnr                       = '0901'                 " Screen to Which This Docking Control is Linked
+      side                        = cl_gui_docking_container=>dock_at_top     " Side to Which Control is Docked
+      extension                   = 100               " Control Extension
+*     style                       =                  " Windows Style Attributes Applied to This Docking Container
+*     lifetime                    = lifetime_default " Lifetime
+*     caption                     =                  " Caption
+*     metric                      = 0                " Metric
+*     ratio                       =                  " Percentage of Screen: Takes Priority Over EXTENSION
+*     no_autodef_progid_dynnr     =                  " Don't Autodefined Progid and Dynnr?
+*     name                        =                  " Name
+    exceptions
+      cntl_error                  = 1                " Invalid Parent Control
+      cntl_system_error           = 2                " System Error
+      create_error                = 3                " Create Error
+      lifetime_error              = 4                " Lifetime Error
+      lifetime_dynpro_dynpro_link = 5                " LIFETIME_DYNPRO_DYNPRO_LINK
+      others                      = 6.
+  if sy-subrc <> 0.
+    message id sy-msgid type sy-msgty number sy-msgno
+      with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+  if go_dock_cont is not initial.
+    go_simple_cont = go_dock_cont.
+    perform create_alv changing go_simple_cont.
+
+  endif.
+
+endform.
+
+FORM output_split_alv.
+
+  CREATE OBJECT go_split_cont
+    exporting
+*      link_dynnr              =                    " Screen Number
+*      link_repid              =                    " Report Name
+*      shellstyle              =                    " Window Style
+*      left                    =                    " Left-aligned
+*      top                     =                    " Top
+*      width                   =                    " NPlWidth
+*      height                  =                    " Hght
+*      metric                  = cntl_metric_dynpro " Metric
+*      align                   = 15                 " Alignment
+      parent                  = go_cont                   " Parent Container
+      rows                    = 2                   " Number of Rows to be displayed
+      columns                 = 2                   " Number of Columns to be Displayed
+*      no_autodef_progid_dynnr =                    " Don't Autodefined Progid and Dynnr?
+*      name                    =                    " Name
+    exceptions
+      cntl_error              = 1                  " See Superclass
+      cntl_system_error       = 2                  " See Superclass
+      others                  = 3
+    .
+  if sy-subrc <> 0.
+   message id sy-msgid type sy-msgty number sy-msgno
+     with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+  IF go_split_cont IS NOT INITIAL.
+
+    go_split_cont->get_container(
+      exporting
+        row       = 1                 " Row
+        column    = 2                 " Column
+      receiving
+        container = go_simple_cont                 " Container
+    ).
+    PERFORM create_alv CHANGING go_simple_cont.
+  ENDIF.
+
+ENDFORM.
+
+FORM output_easy_split_alv.
+
+  CREATE OBJECT go_easy_split_cont
+    exporting
+*      link_dynnr        =                    " Screen Number
+*      link_repid        =                    " Report name
+*      metric            = cntl_metric_dynpro " Metric
+      parent            = go_cont                   " Parent Container
+*      orientation       = 0                  " Orientation: 0 = Vertical, 1 = Horizontal
+*      sash_position     = 50                 " Position of Splitter Bar (in Percent)
+*      with_border       = 1                  " With Border = 1; Without Border = 0
+*      name              =                    " Name
+    exceptions
+      cntl_error        = 1                  " Control Error
+      cntl_system_error = 2                  " Control System Error
+      others            = 3
+    .
+  if sy-subrc <> 0.
+   message id sy-msgid type sy-msgty number sy-msgno
+     with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+  go_simple_cont = go_easy_split_cont->top_left_container.
+  PERFORM create_alv CHANGING go_simple_cont.
+
+
+ENDFORM.
+
+form create_alv changing co_cont type ref to cl_gui_container.
+
+  if go_alv is initial.
+
+    create object go_alv
+      exporting
+*       i_shellstyle      = 0
+*       i_lifetime        =
+        i_parent          = co_cont
+*       i_appl_events     = SPACE
+*       i_parentdbg       =
+*       i_applogparent    =
+*       i_graphicsparent  =
+*       i_name            =
+*       i_fcat_complete   = SPACE
+*       o_previous_sral_handler =
+      exceptions
+        error_cntl_create = 1
+        error_cntl_init   = 2
+        error_cntl_link   = 3
+        error_dp_create   = 4
+        others            = 5.
+    if sy-subrc <> 0.
+      message id sy-msgid type sy-msgty number sy-msgno
+                 with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+  endif.
+  if go_alv is not initial.
+
+    go_alv->set_table_for_first_display(
+      exporting
+*          i_buffer_active               =                  " Buffering Active
+*          i_bypassing_buffer            =                  " Switch Off Buffer
+*          i_consistency_check           =                  " Starting Consistency Check for Interface Error Recognition
+        i_structure_name              = 'SPFLI'                 " Internal Output Table Structure Name
+*          is_variant                    =                  " Layout
+*          i_save                        =                  " Save Layout
+*          i_default                     = 'X'              " Default Display Variant
+*          is_layout                     =                  " Layout
+*          is_print                      =                  " Print Control
+*          it_special_groups             =                  " Field Groups
+*          it_toolbar_excluding          =                  " Excluded Toolbar Standard Functions
+*          it_hyperlink                  =                  " Hyperlinks
+*          it_alv_graphics               =                  " Table of Structure DTC_S_TC
+*          it_except_qinfo               =                  " Table for Exception Quickinfo
+*          ir_salv_adapter               =                  " Interface ALV Adapter
+      changing
+        it_outtab                     = gt_spfli                 " Output Table
+*          it_fieldcatalog               =                  " Field Catalog
+*          it_sort                       =                  " Sort Criteria
+*          it_filter                     =                  " Filter Criteria
+      exceptions
+        invalid_parameter_combination = 1                " Wrong Parameter
+        program_error                 = 2                " Program Errors
+        too_many_lines                = 3                " Too many Rows in Ready for Input Grid
+        others                        = 4
+    ).
+    if sy-subrc <> 0.
+      message id sy-msgid type sy-msgty number sy-msgno
+        with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+  endif.
+
+endform.
+
+start-of-selection.
+
+  select *
+    from spfli
+    into table gt_spfli.
+
+  call  screen 901.

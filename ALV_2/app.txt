@@ -1,0 +1,495 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_ALV_TEST_LCL
+*&---------------------------------------------------------------------*
+class lcl_event_handler definition .
+  public section.
+    class-methods:
+      handle_double_click
+        for event double_click of cl_gui_alv_grid
+        importing e_row e_column,
+
+      handle_hotspot
+        for event hotspot_click of cl_gui_alv_grid
+        importing e_row_id e_column_id es_row_no,
+
+      handle_toolbar for event toolbar of cl_gui_alv_grid
+        importing e_object e_interactive,
+
+      handle_user_command for event user_command of cl_gui_alv_grid
+        importing e_ucomm,
+
+      handle_data_change for event data_changed of cl_gui_alv_grid
+        importing er_data_changed e_onf4 e_onf4_before e_onf4_after e_ucomm,
+
+      handle_data_changed_finished for event data_changed_finished of cl_gui_alv_grid
+        importing e_modified et_good_cells.
+
+
+endclass.
+
+class lcl_main definition.
+
+  public section.
+
+    types begin of mty_s_sbook.
+    include type sbook.
+    types name type char30.
+    types percentage type s_price.
+    types sum_perc type s_price.
+    types rowcolor(4) type c.
+    types cellstyles type lvc_t_styl.
+    types end of mty_s_sbook.
+
+    methods:
+      constructor importing ir_carrid type gtyp_r_carrid,
+
+      select_data,
+
+      show_data,
+
+      refresh_table_display,
+
+      get_selected_rows.
+
+    data: mo_alv    type ref to cl_gui_alv_grid.
+    class-data: mt_data   type table of mty_s_sbook.
+
+  private section.
+
+    methods: fill_fieldcatalog changing ct_fcat type lvc_t_fcat,
+
+      fill_layout changing cs_layo type lvc_s_layo,
+
+      exclude_tb_func changing ct_functions type ui_functions,
+
+      change_data_before_output changing ct_data like mt_data,
+
+      handle_user_command for event user_command of cl_gui_alv_grid
+        importing e_ucomm.
+
+    data: mr_carrid type gtyp_r_carrid,
+
+*          mt_data   type table of sbook,
+          mo_cont   type ref to cl_gui_custom_container.
+*          mo_alv    type ref to cl_gui_alv_grid.
+
+endclass.
+
+data: go_main type ref to lcl_main.
+
+class lcl_event_handler implementation.
+  method handle_double_click.
+
+    data: lv_i type i.
+    lv_i = e_row.
+    message i000 with lv_i e_column.
+
+  endmethod.
+
+  method handle_hotspot.
+    break-point.
+  endmethod.
+
+  method handle_toolbar.
+    data: ls_toolbar type stb_button.
+
+    clear ls_toolbar.
+    ls_toolbar-butn_type = 3.
+    insert ls_toolbar into table e_object->mt_toolbar.
+
+    clear ls_toolbar.
+    ls_toolbar-butn_type = 0.
+    ls_toolbar-function = 'BTN1'.
+    ls_toolbar-icon = icon_calculation.
+    ls_toolbar-text = 'Кнопка'.
+    insert ls_toolbar into table e_object->mt_toolbar.
+  endmethod.
+
+  method handle_user_command.
+    data lt_selected_rows type lvc_t_roid .
+    data ls_selected_row type lvc_s_roid .
+    case e_ucomm.
+      when 'BTN1'.
+        go_main->mo_alv->get_selected_rows(
+          importing
+*            et_index_rows =                  " Indexes of Selected Rows
+            et_row_no     = lt_selected_rows  " Numeric IDs of Selected Rows
+        ).
+*        message i001.
+*    WHEN .
+      when others.
+    endcase.
+  endmethod.
+
+  method handle_data_change.
+
+    data: lt_data like lcl_main=>mt_data,
+          lo_data type ref to data.
+
+    field-symbols: <fs> type any.
+
+    assign er_data_changed->mp_mod_rows->* to <fs>.
+    move-corresponding <fs> to lt_data.
+
+    read table lt_data assigning field-symbol(<fs_mod_rows>) index 1.
+    if sy-subrc = 0.
+      if <fs_mod_rows>-percentage > 100.
+        <fs_mod_rows>-percentage = 100.
+      endif.
+    endif.
+*    BREAK-POINT.
+  endmethod.
+
+  method handle_data_changed_finished.
+
+    read table et_good_cells assigning field-symbol(<e_modified>)
+                with key fieldname = 'PERCENTAGE'.
+
+    if sy-subrc = 0.
+      read table lcl_main=>mt_data assigning field-symbol(<mt_data>) index <e_modified>-row_id.
+      if sy-subrc = 0.
+        if <mt_data>-percentage > 100.
+          <mt_data>-percentage = 100.
+          message s002 display like 'W'.
+        endif.
+        <mt_data>-sum_perc = <mt_data>-loccuram * <mt_data>-percentage / 100.
+      endif.
+    endif.
+
+    go_main->refresh_table_display( ).
+
+  endmethod.
+
+endclass.
+
+class lcl_main implementation.
+
+  method constructor.
+    mr_carrid = ir_carrid.
+  endmethod.
+
+  method select_data.
+    select *
+      from sbook
+      into corresponding fields of table mt_data
+      where carrid in mr_carrid.
+  endmethod.
+
+  method show_data.
+
+    data: lt_fieldcat type lvc_t_fcat,
+          ls_layout   type lvc_s_layo,
+          lt_exclude  type ui_functions.
+
+    if mo_cont is initial.
+      create object mo_cont
+        exporting
+*         parent                      =                  " Parent container
+          container_name              = 'CONT1'                 " Name of the Screen CustCtrl Name to Link Container To
+*         style                       =                  " Windows Style Attributes Applied to this Container
+*         lifetime                    = lifetime_default " Lifetime
+*         repid                       =                  " Screen to Which this Container is Linked
+*         dynnr                       =                  " Report To Which this Container is Linked
+*         no_autodef_progid_dynnr     =                  " Don't Autodefined Progid and Dynnr?
+        exceptions
+          cntl_error                  = 1                " CNTL_ERROR
+          cntl_system_error           = 2                " CNTL_SYSTEM_ERROR
+          create_error                = 3                " CREATE_ERROR
+          lifetime_error              = 4                " LIFETIME_ERROR
+          lifetime_dynpro_dynpro_link = 5                " LIFETIME_DYNPRO_DYNPRO_LINK
+          others                      = 6.
+      if sy-subrc <> 0.
+        message id sy-msgid type sy-msgty number sy-msgno
+          with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      endif.
+
+    endif.
+
+    if mo_cont is not initial.
+
+      if mo_alv is initial.
+
+        create object mo_alv
+          exporting
+*           i_shellstyle      = 0                " Control Style
+*           i_lifetime        =                  " Lifetime
+            i_parent          = mo_cont                " Parent Container
+*           i_appl_events     = space            " Register Events as Application Events
+*           i_parentdbg       =                  " Internal, Do not Use
+*           i_applogparent    =                  " Container for Application Log
+*           i_graphicsparent  =                  " Container for Graphics
+*           i_name            =                  " Name
+*           i_fcat_complete   = space            " Boolean Variable (X=True, Space=False)
+*           o_previous_sral_handler =
+          exceptions
+            error_cntl_create = 1                " Error when creating the control
+            error_cntl_init   = 2                " Error While Initializing Control
+            error_cntl_link   = 3                " Error While Linking Control
+            error_dp_create   = 4                " Error While Creating DataProvider Control
+            others            = 5.
+        if sy-subrc <> 0.
+          message id sy-msgid type sy-msgty number sy-msgno
+            with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+        endif.
+
+      endif.
+
+      if mo_alv is not initial.
+
+        fill_fieldcatalog(
+          changing
+            ct_fcat = lt_fieldcat
+        ).
+
+        fill_layout(
+          changing
+            cs_layo = ls_layout
+        ).
+
+        exclude_tb_func(
+          changing
+            ct_functions = lt_exclude
+        ).
+
+        mo_alv->set_ready_for_input(
+*            i_ready_for_input = 1
+        ).
+
+        mo_alv->register_edit_event(
+          exporting
+            i_event_id = cl_gui_alv_grid=>mc_evt_enter                 " Event ID
+          exceptions
+            error      = 1                " Error
+            others     = 2
+        ).
+
+        mo_alv->register_edit_event(
+          exporting
+            i_event_id = cl_gui_alv_grid=>mc_evt_modified                 " Event ID
+          exceptions
+            error      = 1                " Error
+            others     = 2
+        ).
+
+        change_data_before_output( changing ct_data = mt_data ).
+        data: ls_variant type disvariant.
+        ls_variant-report = sy-repid.
+        ls_variant-handle = 'co00'.
+
+        mo_alv->set_table_for_first_display(
+          exporting
+*            i_buffer_active               =                  " Buffering Active
+*            i_bypassing_buffer            =                  " Switch Off Buffer
+*            i_consistency_check           =                  " Starting Consistency Check for Interface Error Recognition
+*            i_structure_name              = 'SBOOK'                 " Internal Output Table Structure Name
+            is_variant                    = ls_variant                 " Layout
+            i_save                        = 'A'                 " Save Layout
+*            i_default                     = 'X'              " Default Display Variant
+            is_layout                     = ls_layout                 " Layout
+*            is_print                      =                  " Print Control
+*            it_special_groups             =                  " Field Groups
+            it_toolbar_excluding          = lt_exclude                 " Excluded Toolbar Standard Functions
+*            it_hyperlink                  =                  " Hyperlinks
+*            it_alv_graphics               =                  " Table of Structure DTC_S_TC
+*            it_except_qinfo               =                  " Table for Exception Quickinfo
+*            ir_salv_adapter               =                  " Interface ALV Adapter
+          changing
+            it_outtab                     = mt_data                 " Output Table
+            it_fieldcatalog               = lt_fieldcat                 " Field Catalog
+*            it_sort                       =                  " Sort Criteria
+*            it_filter                     =                  " Filter Criteria
+          exceptions
+            invalid_parameter_combination = 1                " Wrong Parameter
+            program_error                 = 2                " Program Errors
+            too_many_lines                = 3                " Too many Rows in Ready for Input Grid
+            others                        = 4
+        ).
+        if sy-subrc <> 0.
+          message id sy-msgid type sy-msgty number sy-msgno
+            with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+        endif.
+
+        set handler lcl_event_handler=>handle_double_click for mo_alv.
+        set handler lcl_event_handler=>handle_hotspot for mo_alv.
+        set handler lcl_event_handler=>handle_toolbar for mo_alv.
+
+        mo_alv->set_toolbar_interactive( ).
+*        set handler handle_user_command for mo_alv.
+        set handler lcl_event_handler=>handle_user_command for mo_alv.
+        set handler lcl_event_handler=>handle_data_change for mo_alv.
+        set handler lcl_event_handler=>handle_data_changed_finished for mo_alv.
+
+      endif.
+
+    endif.
+
+  endmethod.
+
+  method fill_fieldcatalog.
+    DATA: lv_var TYPE i.
+    data ls_fcat type lvc_s_fcat.
+
+*    ls_fcat-fieldname = 'CARRID'.
+*    ls_fcat-ref_field = 'S_CARR_ID'.
+*    ls_fcat-coltext = 'Carrier ID' .
+*    ls_fcat-seltext = 'Carrier ID' .
+*    APPEND ls_fcat TO ct_fcat.
+*    CLEAR ls_fcat.
+*
+*    ls_fcat-fieldname = 'CONNID'.
+*    ls_fcat-ref_field = 'S_CONN_ID'.
+*    ls_fcat-coltext = 'Connection Number' .
+*    ls_fcat-seltext = 'Flight Connection Number' .
+*    APPEND ls_fcat TO ct_fcat.
+*    CLEAR ls_fcat.
+*
+*    ls_fcat-fieldname = 'NAME'.
+*    ls_fcat-ref_field = 'CHAR30'.
+*    ls_fcat-coltext = 'Someone name' .
+*    ls_fcat-seltext = 'Name'.
+*    ls_fcat-edit = 'X'.
+*    APPEND ls_fcat TO ct_fcat.
+*    CLEAR ls_fcat.
+
+    call function 'LVC_FIELDCATALOG_MERGE'
+      exporting
+*       I_BUFFER_ACTIVE        =
+        i_structure_name       = 'SBOOK'
+*       I_CLIENT_NEVER_DISPLAY = 'X'
+*       I_BYPASSING_BUFFER     =
+*       I_INTERNAL_TABNAME     =
+      changing
+        ct_fieldcat            = ct_fcat
+      exceptions
+        inconsistent_interface = 1
+        program_error          = 2
+        others                 = 3.
+    if sy-subrc <> 0.
+* Implement suitable error handling here
+    endif.
+
+    delete ct_fcat index lines( ct_fcat ).
+
+    ls_fcat-fieldname = 'NAME'.
+    ls_fcat-ref_field = 'CHAR30'.
+    ls_fcat-coltext = 'Someone name'.
+    ls_fcat-seltext = 'Name'.
+*    ls_fcat-edit = 'X'.
+    ls_fcat-hotspot = 'X'.
+    ls_fcat-emphasize = 'C300'.
+*    ls_fcat-col_pos = 26.
+    ls_fcat-col_pos = lines( ct_fcat ) + 1 .
+    append ls_fcat to ct_fcat.
+    clear ls_fcat.
+
+    lv_var = 1.
+
+    read table ct_fcat assigning field-symbol(<ct_fcat>) with key fieldname = 'PASSNAME'.
+    <ct_fcat>-hotspot = 'X'.
+
+    ls_fcat-fieldname = 'PERCENTAGE'.
+    ls_fcat-ref_field = 'S_PRICE'.
+    ls_fcat-coltext = 'Percentage'.
+    ls_fcat-seltext = 'Percentage'.
+    ls_fcat-decimals = 2.
+    ls_fcat-col_pos = lines( ct_fcat ) + 1 .
+    append ls_fcat to ct_fcat.
+    clear ls_fcat.
+
+    ls_fcat-fieldname = 'SUM_PERC'.
+    ls_fcat-ref_field = 'S_PRICE'.
+    ls_fcat-coltext = 'Percentage sum'.
+    ls_fcat-seltext = 'Percentage sum'.
+    ls_fcat-col_pos = lines( ct_fcat ) + 1 .
+    append ls_fcat to ct_fcat.
+    clear ls_fcat.
+
+  endmethod.
+
+  method fill_layout.
+
+    cs_layo-zebra = 'X'.
+    cs_layo-sel_mode = 'A'.
+    cs_layo-grid_title = 'Title 00'.
+    cs_layo-info_fname = 'ROWCOLOR'.
+    cs_layo-stylefname = 'CELLSTYLES'.
+
+  endmethod.
+
+  method exclude_tb_func.
+
+    data ls_exclude type ui_func.
+*    ls_exclude = cl_gui_alv_grid=>mc_fc_sort_asc .
+*    append ls_exclude to ct_functions.
+*    ls_exclude = cl_gui_alv_grid=>mc_fc_sort_dsc .
+*    append ls_exclude to ct_functions.
+*    ls_exclude = cl_gui_alv_grid=>mc_fc_subtot .
+*    append ls_exclude to ct_functions.
+*    ls_exclude = cl_gui_alv_grid=>mc_fc_sum .
+*    append ls_exclude to ct_functions.
+
+  endmethod.
+
+  method change_data_before_output.
+    data: ls_style type lvc_s_styl.
+    loop at ct_data assigning field-symbol(<ct_data>) where forcuram < 400.
+      <ct_data>-rowcolor = 'C600'.
+    endloop.
+
+    loop at ct_data assigning <ct_data> where loccuram > 400.
+      ls_style-fieldname = 'PERCENTAGE'.
+      ls_style-style = cl_gui_alv_grid=>mc_style_enabled.
+      append ls_style to <ct_data>-cellstyles.
+      clear ls_style.
+    endloop.
+
+  endmethod.
+
+  method refresh_table_display.
+    data: ls_stable type lvc_s_stbl.
+
+    ls_stable = 'XX'.
+
+    mo_alv->refresh_table_display(
+      exporting
+        is_stable      = ls_stable                 " With Stable Rows/Columns
+*        i_soft_refresh =                  " Without Sort, Filter, etc.
+      exceptions
+        finished       = 1                " Display was Ended (by Export)
+        others         = 2
+    ).
+    if sy-subrc <> 0.
+*     message id sy-msgid type sy-msgty number sy-msgno
+*       with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+  endmethod.
+
+  method get_selected_rows.
+*    data: lt_row_no     type lvc_t_roid,
+*          lt_index_rows type lvc_t_row.
+*    mo_alv->get_selected_rows(
+*      importing
+*        et_index_rows = lt_index_rows                 " Indexes of Selected Rows
+*        et_row_no     = lt_row_no                 " Numeric IDs of Selected Rows
+*    ).
+
+  endmethod.
+
+  METHOD handle_user_command.
+*    data lt_selected_rows type lvc_t_roid .
+*    data ls_selected_row type lvc_s_roid .
+*    case e_ucomm.
+*      when 'BTN1'.
+*        mo_alv->get_selected_rows(
+*          importing
+**            et_index_rows =                  " Indexes of Selected Rows
+*            et_row_no     = lt_selected_rows                 " Numeric IDs of Selected Rows
+*        ).
+**        message i001.
+**    WHEN .
+*      when others.
+*    endcase.
+  ENDMETHOD.
+
+endclass.

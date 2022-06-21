@@ -1,0 +1,18 @@
+*&---------------------------------------------------------------------*
+*& Report ZIA_FINAL
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zia_final.
+
+tables:
+  sbook, spfli.
+include zia_final_top.
+include zia_final_lcl.
+include zia_final_sscr.
+include zia_final_status_0200o01.
+include zia_final_user_command_0200i01.
+
+
+
+start-of-selection.

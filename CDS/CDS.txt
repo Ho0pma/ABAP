@@ -1,0 +1,20 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_CDS
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_cds.
+
+include zap_cds_top.
+include zap_cds_sel.
+include zap_cds_app.
+
+
+start-of-selection.
+
+  go_app = new lcl_app(
+    iv_curr = p_curr
+    iv_lang = p_lang
+  ).
+
+  go_app->start( ).

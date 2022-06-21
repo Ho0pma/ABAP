@@ -1,0 +1,167 @@
+class zap_calc_stock_remain definition
+  public
+  final
+  create public .
+
+public section.
+
+  types:
+    lty_refuel_data type standard table of zsmpru09_wb_refuel_data.
+
+  class-methods calculatestockremain
+    importing
+      !it_refuel type lty_refuel_data
+    exporting
+      !et_refuel type lty_refuel_data
+    .
+
+protected section.
+private section.
+ENDCLASS.
+
+
+
+CLASS ZAP_CALC_STOCK_REMAIN IMPLEMENTATION.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Static Public Method ZAP_CALC_STOCK_REMAIN=>CALCULATESTOCKREMAIN
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IT_REFUEL                      TYPE        LTY_REFUEL_DATA
+* | [<---] ET_REFUEL                      TYPE        LTY_REFUEL_DATA
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  method calculatestockremain.
+
+    types: begin of lts_info,
+
+            tor_id      type zsmpru09_wb_refuel_data-tor_id,
+            refuel_date type zsmpru09_wb_refuel_data-tor_id,
+            charg       type zsmpru09_wb_refuel_data-charg,
+            fuel_mat    type zsmpru09_wb_refuel_data-fuel_mat,
+            sum         type zsmpru09_wb_refuel_data-refuel_qty_kg,
+            max         type zsmpru09_wb_refuel_data-refuel_qty_kg,
+            remainder   type zsmpru09_wb_refuel_data-refuel_qty_kg,
+
+           end of lts_info.
+
+    types: begin of lts_remainder,
+
+            remainder type zsmpru09_wb_refuel_data-refuel_qty_kg,
+
+           end of lts_remainder.
+
+    data: ls_refuel_data type zsmpru09_wb_refuel_data,
+          ls_info   type lts_info,
+          lt_info   type table of lts_info,
+          lv_last_index type sy-tabix,
+          lv_next_index type sy-tabix,
+          lv_index      type sy-tabix value 1,
+          lv_sum         type zsmpru09_wb_refuel_data-refuel_qty_kg,
+          ls_remainder   type lts_remainder,
+          lt_remainder   type standard table of lts_remainder.
+
+    et_refuel = it_refuel. " прираваем пустую таблицу к заполненной
+    " подготавливаем структуру для таблицы et_refuel с таким же типом
+    " и потом эту структуру кореспондим в нашу результирующую
+    read table et_refuel into ls_refuel_data index 1. " et теперь заполненна - запишем ее в структуру + 1 строку
+    move-corresponding ls_refuel_data to ls_info.     " скопируем структуры (будут отличаться кол-вом полей)
+    lv_last_index = lines( et_refuel ).          " посчитаем кол-во строк (21)
+
+    loop at et_refuel into data(ls_refuel). " прогоняет по et и записывает каждый раз новую строку в ls_refuel
+
+      ls_info-sum += ls_refuel-refuel_qty_kg. " 413 + 261 + 222 суммирует каждый раз qty_kg
+
+      if ls_info-max < ls_refuel-refuel_qty_kg. " проверка: макс значение меньше ли текущего?
+
+        ls_info-max = ls_refuel-refuel_qty_kg.  " если меньше = приравнять к текущему.
+
+      endif.
+      " отработали со старым значением индекса - записываем новый
+      lv_next_index = sy-tabix + 1.
+      read table et_refuel into ls_refuel_data index lv_next_index. " читает со следующим индексом
+"?
+      if lv_next_index > lv_last_index.
+
+        append ls_info to lt_info. " добавляет в табличку строку с текущеми показателями
+
+        elseif ls_info-tor_id      <> ls_refuel_data-tor_id
+            or ls_info-refuel_date <> ls_refuel_data-refuel_date
+            or ls_info-charg       <> ls_refuel_data-charg
+            or ls_info-fuel_mat    <> ls_refuel_data-fuel_mat.
+
+          append ls_info to lt_info.      " после окончания цикла lt_info будет состоять из 8 строк
+          clear ls_info.
+          move-corresponding ls_refuel_data to ls_info.
+
+      endif.
+
+    endloop.
+
+" 1 цикл прошёл теперь есть заполненная таблица (по нашему type begin of)
+" и перезапишем ее в нашу структуру ls_info
+    read table lt_info into ls_info index lv_index.
+    clear lv_next_index.
+
+    loop at et_refuel into ls_refuel.
+
+      ls_refuel-stock_qty_kg_distr = ls_refuel-refuel_qty_kg
+                                   * ls_refuel-stock_qty_kg
+                                   / ls_info-sum.
+
+      lv_sum += ls_refuel-stock_qty_kg_distr.
+      modify et_refuel from ls_refuel.
+
+      lv_next_index = sy-tabix + 1.
+      read table et_refuel into ls_refuel_data index lv_next_index.
+
+      if lv_next_index > lv_last_index.
+        move-corresponding ls_refuel to ls_refuel_data.
+
+      elseif ls_info-tor_id      <> ls_refuel_data-tor_id
+          or ls_info-refuel_date <> ls_refuel_data-refuel_date
+          or ls_info-charg       <> ls_refuel_data-charg
+          or ls_info-fuel_mat    <> ls_refuel_data-fuel_mat.
+
+       ls_remainder-remainder = ls_refuel-stock_qty_kg - lv_sum.
+        append ls_remainder to lt_remainder.
+*        modify lt_info from ls_info.
+
+        clear lv_sum.
+        lv_index += 1.
+        read table lt_info into ls_info index lv_index.
+
+      endif.
+
+    endloop.
+
+    clear lv_index.
+    loop at lt_info into ls_info.
+      lv_index += 1.
+      read table lt_remainder into ls_remainder index lv_index.
+      ls_info-remainder = ls_remainder-remainder.
+      modify lt_info from ls_info.
+    endloop.
+
+
+    lv_index = 1.
+    loop at et_refuel into ls_refuel.
+      read table lt_info into ls_info index lv_index.
+
+      if    ls_info-tor_id      = ls_refuel-tor_id
+        and ls_info-refuel_date = ls_refuel-refuel_date
+        and ls_info-charg       = ls_refuel-charg
+        and ls_info-fuel_mat    = ls_refuel-fuel_mat
+        and ls_info-max         = ls_refuel-refuel_qty_kg.
+
+        ls_refuel-stock_qty_kg_distr += ls_info-remainder.
+        modify et_refuel from ls_refuel.
+        lv_index += 1.
+      endif.
+    endloop.
+
+
+
+
+
+  endmethod.
+ENDCLASS.

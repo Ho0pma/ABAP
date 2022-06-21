@@ -1,0 +1,81 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_ALV_FACTORY
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_alv_factory.
+
+parameters: pa_car  type sbook-carrid,
+            pa_date type sbook-fldate.
+
+types: begin of gty_sbook,
+         customid     type s_customer,
+         passname     type s_passname,
+         fldate       type s_date,
+         sum_forcuram type s_f_cur_pr,
+         forcurkey    type s_curr,
+         sum_loccuram type s_l_cur_pr,
+         loccurkey    type s_currcode,
+       end of gty_sbook.
+
+
+data: go_alv     type ref to cl_salv_table,
+      go_columns type ref to cl_salv_columns_table,
+      go_column  type ref to cl_salv_column,
+      go_layout  type ref to cl_salv_layout,
+
+      gs_result  type gty_sbook,
+      gt_result  type table of gty_sbook.
+
+
+
+
+select customid
+       passname
+       fldate
+       forcurkey
+       loccurkey
+       sum( forcuram ) as sum_forcuram
+       sum( loccuram ) as sum_loccuram
+  into corresponding fields of table gt_result
+  from sbook
+  where carrid = pa_car and
+        fldate = pa_date
+  group by passname fldate customid forcurkey loccurkey.
+
+  if sy-subrc <> 0.
+    message: |miss data :(| type 'I'.
+  endif.
+
+
+cl_salv_table=>factory(
+*  exporting
+*    list_display   = if_salv_c_bool_sap=>false " ALV Displayed in List Mode
+*    r_container    =                           " Abstract Container for GUI Controls
+*    container_name =
+  importing
+    r_salv_table   = go_alv                        " Basis Class Simple ALV Tables
+  changing
+    t_table        = gt_result
+).
+*catch cx_salv_msg. " ALV: General Error Class with Message
+
+
+go_alv->get_functions( )->set_all( ).
+go_columns = go_alv->get_columns( ).
+
+go_column =  go_columns->get_column( columnname = 'SUM_FORCURAM' ).
+go_column->set_long_text( value = 'SUM FOREIGN CURRENCY' ).
+go_column->set_short_text( value = 'SUM1'  ).
+
+go_column =  go_columns->get_column( columnname = 'SUM_LOCCURAM' ).
+go_column->set_long_text( value = 'SUM LOCAL CURRENCY' ).
+go_column->set_medium_text( value = 'SUM2' ).
+go_column->set_short_text( value = 'SUM2' ).
+
+
+
+go_columns->set_optimize( ).
+go_alv->display( ).
+
+go_alv->refresh( ).

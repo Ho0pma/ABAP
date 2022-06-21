@@ -1,0 +1,25 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_TASK6
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_task6 message-id zap_task6.
+
+include zap_task6_top.
+include zap_task6_sel.
+include zap_task6_def.
+include zap_task6_imp.
+include zap_task6_pbo.
+include zap_task6_pai.
+
+
+start-of-selection.
+
+  go_app = new lcl_app(
+    iv_carrid = p_carrid
+    iv_fldate = s_date[]
+  ).
+
+  go_app->start( ).
+
+call screen 0100.

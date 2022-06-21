@@ -1,0 +1,1055 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_TREE_TEST_LCL_IMP
+*&---------------------------------------------------------------------*
+
+
+class lcl_view_handler implementation.
+  method on_node_click.
+    double_click( node_key ).
+  endmethod.
+
+  method on_item_click.
+    double_click( node_key ).
+  endmethod.
+
+  method double_click.
+    mv_selected_node_key = iv_node_key.
+  endmethod.
+
+  method toggle_edit.
+
+    data(lo_view) = lcl_view=>get_instance( ).
+
+    if mv_edit = abap_false.
+      mv_edit = abap_true.
+      read table lo_view->mt_gridfcat_d assigning field-symbol(<fs_customnum>)
+        with key fieldname = 'ID'.
+      <fs_customnum>-edit = 'X'.
+
+      read table lo_view->mt_gridfcat_d assigning field-symbol(<fs_agencynum>)
+        with key fieldname = 'AGENCYNUM'.
+      <fs_agencynum>-edit = 'X'.
+    else.
+      mv_edit = abap_false.
+      read table lo_view->mt_gridfcat_d assigning field-symbol(<fs_customnum1>)
+        with key fieldname = 'ID'.
+      <fs_customnum1>-edit = ''.
+
+      read table lo_view->mt_gridfcat_d assigning field-symbol(<fs_agencynum1>)
+        with key fieldname = 'AGENCYNUM'.
+      <fs_agencynum1>-edit = ''.
+    endif.
+
+    lo_view->mo_grid_detail->set_frontend_fieldcatalog(
+      it_fieldcatalog = lo_view->mt_gridfcat_d
+    ).
+    lo_view->set_tab_dis_gd( ).
+    lo_view->refresh( ).
+
+  endmethod.
+
+  method on_double_click_grid.
+    data ls_agency type sty_agency.
+
+    mv_row    = e_row.
+    mv_column = e_column.
+
+    data(lo_view) = lcl_view=>get_instance( ).
+    read table lo_view->mt_selected into data(ls_selected) index mv_row.
+
+    select id
+           name
+           street
+           telephone
+      from scustom
+      into corresponding fields of table lo_view->mt_details
+      where id = ls_selected-customid.
+
+    select single
+           agencynum
+           name
+           street
+           url
+      from stravelag
+      into corresponding fields of ls_agency
+      where agencynum = ls_selected-agencynum.
+
+    read table lo_view->mt_details assigning field-symbol(<fs_details>) index 1.
+    <fs_details>-agencynum = ls_agency-agencynum.
+    <fs_details>-ag_name   = ls_agency-name.
+    <fs_details>-ag_street = ls_agency-street.
+    <fs_details>-url       = ls_agency-url.
+    <fs_details>-seat   = ls_selected-zz_city_call.
+
+    if mv_edit = abap_true.
+      toggle_edit( ).
+    endif.
+
+    "+palkov 20/05/2022
+*    if mv_edit eq abap_true.
+*      "установить блокировку
+*      call function 'ENQUEUE_ESBOOK'
+*        exporting
+*          mode_sbook     = 'E'
+**         MANDT          = SY-MANDT
+*          carrid         = ls_selected-carrid
+*          connid         = ls_selected-connid
+*          fldate         = ls_selected-fldate
+*          bookid         = ls_selected-bookid
+**         X_CARRID       = ' '
+**         X_CONNID       = ' '
+**         X_FLDATE       = ' '
+**         X_BOOKID       = ' '
+**         _SCOPE         = '2'
+**         _WAIT          = ' '
+**         _COLLECT       = ' '
+*        exceptions
+*          foreign_lock   = 1
+*          system_failure = 2
+*          others         = 3.
+*      if sy-subrc <> 0.
+*        "Если установлена - edit = X
+*        "Если нет - edit = ''
+*        toggle_edit( ).
+*        message text-010 type 'S'.
+*      endif.
+*
+*    endif.
+
+    lo_view->refresh( ).
+  endmethod.
+
+  method on_toolbar.
+*    break-point.
+    data: ls_toolbar type stb_button.
+
+    clear ls_toolbar.
+    ls_toolbar-butn_type = 3.
+    insert ls_toolbar into table e_object->mt_toolbar.
+
+    clear ls_toolbar.
+    ls_toolbar-butn_type = 0.
+    ls_toolbar-function = 'BTN1'.
+    ls_toolbar-icon = icon_change.
+    ls_toolbar-text = 'Edit'.
+    insert ls_toolbar into table e_object->mt_toolbar.
+
+*    clear ls_toolbar.
+*    read table e_object->mt_toolbar into ls_toolbar with key function = '&PRINT_BACK'.
+*    ls_toolbar-function = 'MY_PRINT'.
+*    modify table e_object->mt_toolbar from ls_toolbar.
+
+  endmethod.
+
+  method on_user_command.
+    data(lo_view) = lcl_view=>get_instance( ).
+*    break-point.
+    case e_ucomm.
+      when 'BTN1'.
+        toggle_edit( ).
+
+        read table lo_view->mt_selected into data(ls_selected) index mv_row.
+        "+palkov 20/05/2022
+        if mv_edit eq abap_true.
+          "установить блокировку
+          call function 'ENQUEUE_ESBOOK'
+            exporting
+              mode_sbook     = 'E'
+*             MANDT          = SY-MANDT
+              carrid         = ls_selected-carrid
+              connid         = ls_selected-connid
+              fldate         = ls_selected-fldate
+              bookid         = ls_selected-bookid
+*             X_CARRID       = ' '
+*             X_CONNID       = ' '
+*             X_FLDATE       = ' '
+*             X_BOOKID       = ' '
+*             _SCOPE         = '2'
+*             _WAIT          = ' '
+*             _COLLECT       = ' '
+            exceptions
+              foreign_lock   = 1
+              system_failure = 2
+              others         = 3.
+          if sy-subrc <> 0.
+            "Если установлена - edit = X
+            "Если нет - edit = ''
+            toggle_edit( ).
+            message text-010 type 'S'.
+          endif.
+
+        endif.
+
+*      when 'MY_PRINT'."&SORT_ASC &PRINT_BACK
+*        break-point.
+*      when others.
+*        break-point.
+    endcase.
+  endmethod.
+
+  method on_data_changed_finish.
+    data ls_agency type sty_agency.
+
+    data(lo_view) = lcl_view=>get_instance( ).
+    read table et_good_cells assigning field-symbol(<fs_modinfo>) index 1.
+    if sy-subrc = 0.
+      read table lo_view->mt_details into data(ls_data) index <fs_modinfo>-row_id.
+      if sy-subrc = 0.
+        if <fs_modinfo>-fieldname = 'ID'.
+          data(lv_old_name) = ls_data-name.
+
+          select id       "+palkov CR select singe - у тебя же полный ключ
+                 name
+                 street
+                 telephone
+            from scustom
+            into corresponding fields of table lo_view->mt_details
+            where id = ls_data-id.
+
+          read table lo_view->mt_details assigning field-symbol(<fs_data>) index <fs_modinfo>-row_id.
+          <fs_data>-agencynum = ls_data-agencynum.
+          <fs_data>-ag_name   = ls_data-ag_name.
+          <fs_data>-ag_street = ls_data-ag_street.
+          <fs_data>-url       = ls_data-url.
+
+        elseif <fs_modinfo>-fieldname = 'AGENCYNUM'.
+          data(lv_old_ag_name) = ls_data-ag_name.
+
+          select single
+                 agencynum
+                 name
+                 street
+                 url
+            from stravelag
+            into corresponding fields of ls_agency
+            where agencynum = ls_data-agencynum.
+
+          read table lo_view->mt_details assigning field-symbol(<fs_data1>) index <fs_modinfo>-row_id.
+          <fs_data1>-agencynum = ls_agency-agencynum.
+          <fs_data1>-ag_name   = ls_agency-name.
+          <fs_data1>-ag_street = ls_agency-street.
+          <fs_data1>-url       = ls_agency-url.
+
+        endif.
+
+        read table lo_view->mt_details assigning field-symbol(<fs_changed>) index <fs_modinfo>-row_id.
+        read table lo_view->mt_selected assigning field-symbol(<fs_selected>) index mv_row.
+        read table lo_view->mt_sbook assigning field-symbol(<fs_sbook>)
+          with key carrid = <fs_selected>-carrid
+                   connid = <fs_selected>-connid
+                   fldate = <fs_selected>-fldate
+                   bookid = <fs_selected>-bookid.
+
+        <fs_selected>-customid  = <fs_changed>-id.
+        <fs_selected>-passname  = <fs_changed>-name.
+        <fs_selected>-agencynum = <fs_changed>-agencynum.
+
+        <fs_sbook>-customid     = <fs_changed>-id.
+        <fs_sbook>-passname     = <fs_changed>-name.
+        <fs_sbook>-agencynum    = <fs_changed>-agencynum.
+
+        lcl_db_handler=>append_for_update( is_line = <fs_selected> ).
+        lo_view->refresh( ).
+
+      endif.
+    endif.
+  endmethod.
+
+  method on_double_click_grid_d.
+    "
+    data(lo_alv_painter) = lcl_view=>get_instance( ).
+    read table lo_alv_painter->mt_details  assigning field-symbol(<fs_details>)  index 1.
+
+    if es_col_id-fieldname = 'seat' and <fs_details>-seat is initial.
+      "
+      read table lo_alv_painter->mt_selected assigning field-symbol(<fs_selected>) with key customid = <fs_details>-id.
+      read table lo_alv_painter->mt_sbook    assigning field-symbol(<fs_sbook>)
+        with key carrid = <fs_selected>-carrid
+                 connid = <fs_selected>-connid
+                 fldate = <fs_selected>-fldate
+                 bookid = <fs_selected>-bookid.
+
+      submit zks_booking
+        with pa_carr = <fs_selected>-carrid
+        with pa_conn = <fs_selected>-connid
+        with pa_date = <fs_selected>-fldate
+        with pa_book = <fs_selected>-bookid
+        and return.
+
+      clear gv_seat.       "+palkov CR можно было бы сделать общий класс-хелпер для передачи данных, через memory id не самое красивое решение.
+      import
+        seat = gv_seat
+        from memory id 'AB_ID'.
+
+      <fs_details>-seat       = gv_seat.
+      <fs_selected>-zz_city_call = gv_seat.
+      <fs_sbook>-zz_city_call    = gv_seat.
+
+      lcl_db_handler=>append_for_update( is_line = <fs_selected> ).
+      lo_alv_painter->refresh( ).
+
+      "
+    endif.
+    "
+  endmethod.
+
+  method on_toolbar_click.
+    case e_ucomm.
+      when '&PRINT_BACK'.
+*        break-point.
+        print_boarding_pass( ).
+*      when .
+*      when others.
+    endcase.
+  endmethod.
+
+  method print_boarding_pass.
+    "
+    data:
+      lv_function_name type funcname,
+      ls_params        type sfpoutputparams.
+
+    data(lo_view) = lcl_view=>get_instance( ).
+    data(ls_sbook) = lo_view->mt_selected[ mv_row ].
+
+    select single
+           *
+      from spfli
+      into @data(ls_spfli)
+      where carrid = @ls_sbook-carrid
+        and connid = @ls_sbook-connid.
+
+    select single * from zbookid into @data(ls_zbook)
+      where carrid = @ls_sbook-carrid and
+            connid = @ls_sbook-connid and
+          customid = @ls_sbook-customid and
+            fldate = @ls_sbook-fldate.
+
+    call function 'FP_FUNCTION_MODULE_NAME'
+      exporting
+        i_name     = 'ZKS_BOARD_PASS_FORM'                 " Form
+      importing
+        e_funcname = lv_function_name
+*       e_interface_type    =
+*       ev_funcname_inbound =
+      .
+*    catch cx_fp_api_repository. " Exception API (Repository)
+*    catch cx_fp_api_usage.      " Exception API (Use)
+*    catch cx_fp_api_internal.   " Exception API (Internal)
+
+    call function 'FP_JOB_OPEN'
+      changing
+        ie_outputparams = ls_params                 " Form Processing Output Parameter
+      exceptions
+        cancel          = 1                " Canceled by user
+        usage_error     = 2
+        system_error    = 3                " System Error
+        internal_error  = 4                " Internal Error
+        others          = 5.
+    if sy-subrc <> 0.
+      message id sy-msgid type sy-msgty number sy-msgno
+        with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+    call function lv_function_name
+      exporting
+        is_sbook   = ls_sbook
+        is_spfli   = ls_spfli
+        is_zbookid = ls_zbook.
+
+    call function 'FP_JOB_CLOSE'
+*      importing
+*        e_result       =
+      exceptions
+        usage_error    = 1
+        system_error   = 2                " System Error
+        internal_error = 3                " Internal Error
+        others         = 4.
+    if sy-subrc <> 0.
+      message id sy-msgid type sy-msgty number sy-msgno
+        with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+    "
+  endmethod.
+endclass.
+
+
+class lcl_view implementation.
+  method get_instance.
+    if mo_instance is not bound.
+      create object mo_instance.
+    endif.
+
+    ro_instance = mo_instance.
+  endmethod.
+
+  method initialization.
+    mt_treedata = it_sflight.
+    sort mt_treedata by carrid connid fldate.
+
+    mt_scarr = it_scarr.
+    mt_sbook = it_sbook.
+    mt_zbookid = it_zbookid.
+    mo_handler = new #( ).
+
+    init_containers( ).
+    prepare_fcat( ).
+    init_tree( ).
+    build_tree_hier( ).
+
+
+    prepare_gridfcat( ).
+    init_grid( ).
+
+    prepare_gridfcat_detail( ).
+    init_grid_detail( ).
+  endmethod.
+
+  method init_containers.
+    if mo_custom is initial.
+      mo_custom = new cl_gui_custom_container(
+*       parent                  =
+        container_name          = mo_custom_container_name
+*       style                   =
+*       lifetime                = lifetime_default
+*       repid                   =
+*       dynnr                   =
+*       no_autodef_progid_dynnr =
+      ).
+
+      mo_cont = new cl_gui_easy_splitter_container(
+*       link_dynnr    =
+*       link_repid    =
+*       metric        = cntl_metric_dynpro
+        parent        = mo_custom
+        orientation   = cl_gui_easy_splitter_container=>orientation_horizontal
+        sash_position = 18
+*       with_border   = 1
+*       name          =
+      ).
+
+      mo_cont_detail = new cl_gui_easy_splitter_container(
+*       link_dynnr    =
+*       link_repid    =
+*       metric        = cntl_metric_dynpro
+        parent        = mo_cont->bottom_right_container
+        orientation   = cl_gui_easy_splitter_container=>orientation_vertical
+        sash_position = 75
+*       with_border   = 1
+*       name          =
+      ).
+    endif.
+
+  endmethod.
+
+  method prepare_fcat.
+    call function 'LVC_FIELDCATALOG_MERGE'
+      exporting
+*       I_BUFFER_ACTIVE  =
+        i_structure_name = 'SFLIGHT'
+*       I_CLIENT_NEVER_DISPLAY       = 'X'
+*       I_BYPASSING_BUFFER           =
+*       I_INTERNAL_TABNAME           =
+      changing
+        ct_fieldcat      = mt_treefcat
+*     EXCEPTIONS
+*       INCONSISTENT_INTERFACE       = 1
+*       PROGRAM_ERROR    = 2
+*       OTHERS           = 3
+      .
+    if sy-subrc <> 0.
+*     Implement suitable error handling here
+    endif.
+
+    do 6 times.
+      delete mt_treefcat index 2.
+    enddo.
+
+    delete mt_treefcat index 4.
+  endmethod.
+
+  method init_tree.
+    data: ls_heir_head type treev_hhdr.
+
+    mo_tree = new cl_gui_alv_tree(
+*     lifetime            =
+      parent              = mo_cont->top_left_container
+*     shellstyle          =
+      node_selection_mode = cl_gui_column_tree=>node_sel_mode_single
+*     hide_selection      =
+*     item_selection      = 'X'
+      no_toolbar          = abap_true
+      no_html_header      = abap_true
+*     i_print             =
+*     i_fcat_complete     =
+*     i_model_mode        =
+    ).
+
+    ls_heir_head-width = 30.
+
+    mo_tree->set_table_for_first_display(
+      exporting
+*       i_structure_name     =                  " Internal Output Table Structure Name
+*       is_variant           =                  " Layout
+*       i_save               =                  " Save Layout
+*       i_default            = 'X'              " Default Display Variant
+        is_hierarchy_header  = ls_heir_head                 " Hierarchy Fields
+*       is_exception_field   =                  " Exception Field
+*       it_special_groups    =                  " Field Groups
+*       it_list_commentary   =                  " Header Information
+*       i_logo               =                  " Logo
+*       i_background_id      =                  " HTML Background
+*       it_toolbar_excluding =                  " Excluded Toolbar Standard Functions
+*       it_except_qinfo      =                  " Tooltip for Exceptions
+      changing
+        it_outtab            = mt_sflight                 " Output Table
+*       it_filter            =                  " Filter Criteria (Not Yet Implemented)
+        it_fieldcatalog      = mt_treefcat                 " Field Catalog
+    ).
+
+    mo_tree->get_registered_events(
+          importing
+            events     = data(mt_tree_events)
+*         exceptions
+*           cntl_error = 1
+*           others     = 2
+        ).
+    if sy-subrc <> 0.
+*     message id sy-msgid type sy-msgty number sy-msgno
+*       with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+    append value #( eventid = cl_gui_column_tree=>eventid_node_double_click
+    appl_event = abap_true ) to mt_tree_events.
+
+    append value #( eventid = cl_gui_column_tree=>eventid_item_double_click
+    appl_event = abap_true ) to mt_tree_events.
+
+    mo_tree->set_registered_events(
+      exporting
+        events                    = mt_tree_events
+*      exceptions
+*        cntl_error                = 1
+*        cntl_system_error         = 2
+*        illegal_event_combination = 3
+*        others                    = 4
+    ).
+    if sy-subrc <> 0.
+*     message id sy-msgid type sy-msgty number sy-msgno
+*       with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+    set handler mo_handler->on_node_click for mo_tree.
+    set handler mo_handler->on_item_click for mo_tree.
+
+  endmethod.
+
+  method build_tree_hier.
+    data: lv_node_key        type lvc_nkey,
+          lv_carrid_node_key type lvc_nkey,
+          lv_connid_node_key type lvc_nkey,
+
+          lv_node_key_text   type string.
+
+    loop at mt_treedata into data(ls_carrid).
+      data(ls_sflight) = ls_carrid.
+      at new carrid.
+
+        read table mt_scarr with key carrid = ls_carrid-carrid into data(ls_scarr).
+        lv_node_key_text = ls_scarr-carrname.
+
+        mo_tree->add_node(
+          exporting
+            i_relat_node_key     = lv_node_key                 " Node Already in Tree Hierarchy
+            i_relationship       = cl_gui_column_tree=>relat_last_child                 " How to Insert Node
+            is_outtab_line       = ls_carrid                 " Attributes of Inserted Node
+*           is_node_layout       =                  " Node Layout
+*           it_item_layout       =                  " Item Layout
+            i_node_text          = conv #( lv_node_key_text )                 " Hierarchy Node Text
+          importing
+            e_new_node_key       = lv_carrid_node_key                 " Key of New Node Key
+          exceptions
+            relat_node_not_found = 1                " Relat Node Key not Found
+            node_not_found       = 2                " Node not Found
+            others               = 3
+        ).
+        if sy-subrc <> 0.
+          message id sy-msgid type sy-msgty number sy-msgno
+            with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+        endif.
+
+        loop at mt_treedata into data(ls_connid) where carrid = ls_carrid-carrid.
+          ls_sflight = ls_connid.
+          at new connid.
+            mo_tree->add_node(
+              exporting
+                i_relat_node_key     = lv_carrid_node_key                 " Node Already in Tree Hierarchy
+                i_relationship       = cl_gui_column_tree=>relat_last_child                 " How to Insert Node
+                is_outtab_line       = ls_connid                 " Attributes of Inserted Node
+*               is_node_layout       =                  " Node Layout
+*               it_item_layout       =                  " Item Layout
+                i_node_text          = conv #( | Рейс | && ls_connid-connid )                 " Hierarchy Node Text
+              importing
+                e_new_node_key       = lv_connid_node_key                 " Key of New Node Key
+              exceptions
+                relat_node_not_found = 1                " Relat Node Key not Found
+                node_not_found       = 2                " Node not Found
+                others               = 3
+            ).
+            if sy-subrc <> 0.
+              message id sy-msgid type sy-msgty number sy-msgno
+                with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+            endif.
+
+            loop at mt_treedata into data(ls_flidate) where carrid = ls_carrid-carrid and connid = ls_connid-connid.
+              ls_sflight = ls_flidate.
+              at new fldate.
+
+                data: lv_test type lvc_value.
+                write ls_flidate-fldate to lv_test dd/mm/yyyy.
+
+                mo_tree->add_node(
+                  exporting
+                    i_relat_node_key     = lv_connid_node_key                 " Node Already in Tree Hierarchy
+                    i_relationship       = cl_gui_column_tree=>relat_last_child                 " How to Insert Node
+                    is_outtab_line       = ls_sflight                 " Attributes of Inserted Node
+*                   is_node_layout       =                  " Node Layout
+*                   it_item_layout       =                  " Item Layout
+                    i_node_text          = lv_test                 " Hierarchy Node Text
+*                 importing
+*                   e_new_node_key       = lv_connid_node_key                 " Key of New Node Key
+                  exceptions
+                    relat_node_not_found = 1                " Relat Node Key not Found
+                    node_not_found       = 2                " Node not Found
+                    others               = 3
+                ).
+                if sy-subrc <> 0.
+                  message id sy-msgid type sy-msgty number sy-msgno
+                    with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+                endif.
+              endat.
+            endloop.
+          endat.
+        endloop.
+      endat.
+    endloop.
+
+  endmethod.
+
+  method display.
+    if mo_handler->mv_selected_node_key is not initial.
+*      message mo_handler->mv_selected_node_key type 'I'.
+      data: ls_outtab type line of lif_types~tty_sflight.
+
+      mo_tree->get_outtab_line(
+        exporting
+          i_node_key     = mo_handler->mv_selected_node_key
+        importing
+          e_outtab_line  = ls_outtab
+*          e_node_text    =
+*          et_item_layout =
+*          es_node_layout =
+        exceptions
+          node_not_found = 1
+          others         = 2
+      ).
+      if sy-subrc <> 0.
+*       message id sy-msgid type sy-msgty number sy-msgno
+*         with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      endif.
+
+      clear: mt_selected, mt_details.
+
+      loop at mt_sbook into data(ls_sbook)
+        where carrid = ls_outtab-carrid
+          and connid = ls_outtab-connid
+          and fldate = ls_outtab-fldate.
+
+        append conv #( ls_sbook ) to mt_selected.
+      endloop.
+
+      if sy-subrc <> 0.
+        loop at mt_sbook into ls_sbook
+          where carrid = ls_outtab-carrid
+          and connid = ls_outtab-connid.
+
+          append conv #( ls_sbook ) to mt_selected.
+        endloop.
+
+        if sy-subrc <> 0.
+          loop at mt_sbook into ls_sbook
+            where carrid = ls_outtab-carrid.
+
+            append conv #( ls_sbook ) to mt_selected.
+          endloop.
+        endif.
+      endif.
+**********************************************************************
+      loop at mt_selected into data(ls_selected).
+        read table mt_zbookid into data(ls_book) with key customid = ls_selected-customid.
+        ls_selected-zz_city_call = ls_book-seat.
+        modify mt_selected from ls_selected.
+        clear ls_book.
+      endloop.
+**********************************************************************
+      clear mo_handler->mv_selected_node_key.
+    endif.
+    refresh( ).
+  endmethod.
+
+  method init_grid.
+    mo_grid = new cl_gui_alv_grid(
+*      i_shellstyle            = 0
+*      i_lifetime              =
+      i_parent                = mo_cont_detail->top_left_container
+*      i_appl_events           = space
+*      i_parentdbg             =
+*      i_applogparent          =
+*      i_graphicsparent        =
+*      i_name                  =
+*      i_fcat_complete         = space
+*      o_previous_sral_handler =
+    ).
+
+    mo_grid->set_table_for_first_display(
+*      exporting
+*        i_buffer_active               =                  " Buffering Active
+*        i_bypassing_buffer            =                  " Switch Off Buffer
+*        i_consistency_check           =                  " Starting Consistency Check for Interface Error Recognition
+*        i_structure_name              =                  " Internal Output Table Structure Name
+*        is_variant                    =                  " Layout
+*        i_save                        =                  " Save Layout
+*        i_default                     = 'X'              " Default Display Variant
+*        is_layout                     =                  " Layout
+*        is_print                      =                  " Print Control
+*        it_special_groups             =                  " Field Groups
+*        it_toolbar_excluding          =                  " Excluded Toolbar Standard Functions
+*        it_hyperlink                  =                  " Hyperlinks
+*        it_alv_graphics               =                  " Table of Structure DTC_S_TC
+*        it_except_qinfo               =                  " Table for Exception Quickinfo
+*        ir_salv_adapter               =                  " Interface ALV Adapter
+      changing
+        it_outtab                     = mt_selected                 " Output Table
+        it_fieldcatalog               = mt_gridfcat                 " Field Catalog
+*        it_sort                       =                  " Sort Criteria
+*        it_filter                     =                  " Filter Criteria
+      exceptions
+        invalid_parameter_combination = 1                " Wrong Parameter
+        program_error                 = 2                " Program Errors
+        too_many_lines                = 3                " Too many Rows in Ready for Input Grid
+        others                        = 4
+    ).
+    if sy-subrc <> 0.
+      message id sy-msgid type sy-msgty number sy-msgno
+        with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+    set handler mo_handler->on_double_click_grid for mo_grid.
+    set handler mo_handler->on_toolbar_click for mo_grid.
+  endmethod.
+
+  method init_grid_detail.
+    mo_grid_detail = new cl_gui_alv_grid(
+*        i_shellstyle            = 0
+*        i_lifetime              =
+      i_parent                = mo_cont_detail->bottom_right_container
+*        i_appl_events           = space
+*        i_parentdbg             =
+*        i_applogparent          =
+*        i_graphicsparent        =
+*        i_name                  =
+*        i_fcat_complete         = space
+*        o_previous_sral_handler =
+    ).
+
+    set_tab_dis_gd( ).
+
+    set handler mo_handler->on_toolbar for mo_grid_detail.
+    set handler mo_handler->on_user_command for mo_grid_detail.
+    set handler mo_handler->on_data_changed_finish for mo_grid_detail.
+    set handler mo_handler->on_double_click_grid_d for mo_grid_detail.
+    set handler mo_handler->on_toolbar_click for mo_grid_detail.
+  endmethod.
+
+  method set_tab_dis_gd.
+    if mo_handler->mv_edit = abap_true.
+      mo_grid_detail->register_edit_event(
+        exporting
+          i_event_id = cl_gui_alv_grid=>mc_evt_enter                 " Event ID
+        exceptions
+          error      = 1                " Error
+          others     = 2
+      ).
+      if sy-subrc <> 0.
+        message id sy-msgid type sy-msgty number sy-msgno
+          with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      endif.
+
+      mo_grid_detail->register_edit_event(
+        exporting
+          i_event_id = cl_gui_alv_grid=>mc_evt_modified                 " Event ID
+        exceptions
+          error      = 1                " Error
+          others     = 2
+      ).
+      if sy-subrc <> 0.
+        message id sy-msgid type sy-msgty number sy-msgno
+          with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      endif.
+    endif.
+
+    mo_grid_detail->set_table_for_first_display(
+        exporting
+*          i_buffer_active               =                  " Buffering Active
+*          i_bypassing_buffer            =                  " Switch Off Buffer
+*          i_consistency_check           =                  " Starting Consistency Check for Interface Error Recognition
+*          i_structure_name              =                  " Internal Output Table Structure Name
+*          is_variant                    =                  " Layout
+*          i_save                        =                  " Save Layout
+*          i_default                     = 'X'              " Default Display Variant
+          is_layout                     = ms_layout                 " Layout
+*          is_print                      =                  " Print Control
+*          it_special_groups             =                  " Field Groups
+*          it_toolbar_excluding          =                  " Excluded Toolbar Standard Functions
+*          it_hyperlink                  =                  " Hyperlinks
+*          it_alv_graphics               =                  " Table of Structure DTC_S_TC
+*          it_except_qinfo               =                  " Table for Exception Quickinfo
+*          ir_salv_adapter               =                  " Interface ALV Adapter
+      changing
+        it_outtab                     = mt_details                 " Output Table
+        it_fieldcatalog               = mt_gridfcat_d                 " Field Catalog
+*          it_sort                       =                  " Sort Criteria
+*          it_filter                     =                  " Filter Criteria
+      exceptions
+        invalid_parameter_combination = 1                " Wrong Parameter
+        program_error                 = 2                " Program Errors
+        too_many_lines                = 3                " Too many Rows in Ready for Input Grid
+        others                        = 4
+  ).
+    if sy-subrc <> 0.
+      message id sy-msgid type sy-msgty number sy-msgno
+        with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+  endmethod.
+
+  method prepare_gridfcat.
+    data:ls_fcat type lvc_s_fcat.
+    call function 'LVC_FIELDCATALOG_MERGE'
+      exporting
+*       I_BUFFER_ACTIVE  =
+        i_structure_name = 'SBOOK'
+*       I_CLIENT_NEVER_DISPLAY       = 'X'
+*       I_BYPASSING_BUFFER           =
+*       I_INTERNAL_TABNAME           =
+      changing
+        ct_fieldcat      = mt_gridfcat
+*     EXCEPTIONS
+*       INCONSISTENT_INTERFACE       = 1
+*       PROGRAM_ERROR    = 2
+*       OTHERS           = 3
+      .
+    if sy-subrc <> 0.
+*     Implement suitable error handling here
+    endif.
+
+    clear ls_fcat.
+
+  endmethod.
+
+  method prepare_gridfcat_detail.
+    data: ls_fcat type lvc_s_fcat,
+          lv_pos  type i.
+
+    call function 'LVC_FIELDCATALOG_MERGE'
+      exporting
+*       I_BUFFER_ACTIVE  =
+        i_structure_name = 'SCUSTOM'
+*       I_CLIENT_NEVER_DISPLAY       = 'X'
+*       I_BYPASSING_BUFFER           =
+*       I_INTERNAL_TABNAME           =
+      changing
+        ct_fieldcat      = mt_gridfcat_d
+*     EXCEPTIONS
+*       INCONSISTENT_INTERFACE       = 1
+*       PROGRAM_ERROR    = 2
+*       OTHERS           = 3
+      .
+    if sy-subrc <> 0.
+*     Implement suitable error handling here
+    endif.
+
+    delete mt_gridfcat_d index 2.
+    ls_fcat-fieldname = 'ID'.
+    ls_fcat-ref_field = 'S_CUSTOMER'.
+    ls_fcat-coltext   = 'Customer number'.
+    ls_fcat-seltext   = 'Customer number'.
+    ls_fcat-col_pos   = 2.
+    append ls_fcat to mt_gridfcat_d.
+    clear ls_fcat.
+
+    do 5 times.     "+palkov CR вот эти конструкции с delete index  вообще не понял зачем.
+      "Хочешь сделать свой фкат - делай его глобальной структурой. Хочешь убрать лишние поля просто из вывода на экран - скрывай через no_out
+      delete mt_gridfcat_d index lines( mt_gridfcat_d ) - 1.
+    enddo.
+
+    do 5 times.
+      delete mt_gridfcat_d index lines( mt_gridfcat_d ) - 2.
+    enddo.
+    delete mt_gridfcat_d index 3.
+
+    read table mt_gridfcat_d assigning field-symbol(<fs_fcat_d>) index lines( mt_gridfcat_d ) - 1.
+    lv_pos = <fs_fcat_d>-col_pos + 1.
+    ls_fcat-fieldname = 'AGENCYNUM'.
+    ls_fcat-ref_field = 'S_AGNCYNUM'.
+    ls_fcat-coltext   = 'Agency number'.
+    ls_fcat-seltext   = 'Agency number'.
+    ls_fcat-col_pos   = lv_pos.
+    append ls_fcat to mt_gridfcat_d.
+    clear ls_fcat.
+
+    lv_pos += 1.
+    ls_fcat-fieldname = 'AG_NAME'.
+    ls_fcat-ref_field = 'S_AGNCYNAM'.
+    ls_fcat-coltext   = 'Agency name'.
+    ls_fcat-seltext   = 'Agency name'.
+    ls_fcat-col_pos   = lv_pos.
+    append ls_fcat to mt_gridfcat_d.
+    clear ls_fcat.
+
+    lv_pos += 1.
+    ls_fcat-fieldname = 'AG_STREET'.
+    ls_fcat-ref_field = 'S_STREET'.
+    ls_fcat-coltext   = 'Agency street'.
+    ls_fcat-seltext   = 'Agency street'.
+    ls_fcat-col_pos   = lv_pos.
+    append ls_fcat to mt_gridfcat_d.
+    clear ls_fcat.
+
+    lv_pos += 1.
+    ls_fcat-fieldname = 'URL'.
+    ls_fcat-ref_field = 'S_URL'.
+    ls_fcat-coltext   = 'Agency URL'.
+    ls_fcat-seltext   = 'Agency URL'.
+    ls_fcat-col_pos   = lv_pos.
+    append ls_fcat to mt_gridfcat_d.
+    clear ls_fcat.
+
+    lv_pos += 1.
+    ls_fcat-fieldname = 'seat'.
+    ls_fcat-ref_field = 'ZE_SEAT'.
+    ls_fcat-coltext   = 'Number of seat'.
+    ls_fcat-seltext   = 'Number of seat'.
+    ls_fcat-col_pos   = lv_pos.
+    ls_fcat-style     = 'BUTTON'.
+    append ls_fcat to mt_gridfcat_d.
+    clear ls_fcat.
+  endmethod.
+
+  method prepare_layout.
+    ms_layout-stylefname = 'seat'.
+  endmethod.
+
+  method refresh.
+    data ls_stable type lvc_s_stbl.
+
+    ls_stable = 'XX'.
+
+    if mo_tree is not initial.
+      mo_tree->frontend_update( ).
+    endif.
+
+    if mo_grid is not initial.
+
+      mo_grid->refresh_table_display(
+      exporting
+        is_stable      = ls_stable
+*        i_soft_refresh =
+      exceptions
+        finished       = 1
+        others         = 2
+      ).
+      if sy-subrc <> 0.
+        message id sy-msgid type sy-msgty number sy-msgno
+          with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      endif.
+    endif.
+
+    if mo_grid_detail is not initial.
+
+      mo_grid_detail->refresh_table_display(
+      exporting
+        is_stable      = ls_stable
+*        i_soft_refresh =
+      exceptions
+        finished       = 1
+        others         = 2
+      ).
+      if sy-subrc <> 0.
+        message id sy-msgid type sy-msgty number sy-msgno
+          with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      endif.
+    endif.
+
+    cl_gui_cfw=>flush( ).
+  endmethod.
+
+endclass.
+
+
+class lcl_app implementation.
+
+  method data_save.
+    lcl_db_handler=>save( ).
+  endmethod.
+
+  method constructor.
+  endmethod.
+
+  method run.
+    select_data( ).
+    mo_view_lcl = lcl_view=>get_instance( ).
+    mo_view_lcl->initialization(
+      exporting
+        it_sflight = mt_sflight
+        it_scarr   = mt_scarr
+        it_sbook   = mt_sbook
+        it_zbookid = mt_zbookid
+    ).
+  endmethod.
+
+
+  method screen_0100_pbo.
+    mo_view_lcl->display( ).
+  endmethod.
+
+  method screen_0100_pai.
+    case sy-ucomm.
+      when 'BACK'.
+        leave to screen 0.
+      when 'SAVE'.
+        data_save( ).
+      when others.
+    endcase.
+  endmethod.
+
+  method select_data.
+    select *
+      from sflight
+      into table mt_sflight.
+
+    select *
+      from sbook
+      into table mt_sbook.
+
+    select *
+      from scarr
+      into table mt_scarr.
+
+    select *
+      from zbookid
+      into table mt_zbookid.
+
+  endmethod.
+
+endclass.

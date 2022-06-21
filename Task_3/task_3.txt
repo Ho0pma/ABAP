@@ -1,0 +1,272 @@
+*&---------------------------------------------------------------------*
+*& Report ZKS_REQUEST
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zks_exam.
+
+constants : rbSelected type c length 1 value 'X'.
+
+selection-screen begin of block frame1 with frame title text-001.
+
+  selection-screen begin of line.
+    selection-screen position 1.
+    parameters: rb1 radiobutton group rb.
+    selection-screen comment 5(30) text-002.
+  selection-screen end of line.
+
+  selection-screen begin of line.
+    selection-screen position 1.
+    parameters: rb2 radiobutton group rb.
+    selection-screen comment 5(30) text-003.
+  selection-screen end of line.
+
+selection-screen end of block frame1.
+
+selection-screen begin of block frame2.
+
+*  parameters:
+*    pa_year  type gjahr default '2021'. " фин год
+
+
+selection-screen end of block frame2.
+
+types: begin of ty_vbap,
+*         vbeln  type vbak-vbeln, " номер накладной
+         kunnr  type vbak-kunnr, " клиент
+         audat  type vbak-audat, " дата
+         matnr  type vbap-matnr, " материал
+         arktx  type vbap-arktx,
+         kwmeng type vbap-kwmeng,
+         meins  type vbap-meins,
+         netwr  type vbap-netwr.
+types: end of ty_vbap.
+
+types: begin of ty_res, " вывод
+         kunnr  type vbak-kunnr, "заказчик
+         matnr  type vbap-matnr, " номер материала
+         arktx  type vbap-arktx, " имя материала
+         kwmeng type vbap-kwmeng, " количество агр.
+         meins  type vbap-meins, " еденица измерения
+         netwr  type vbap-netwr. " стоимость агр.
+types: end of ty_res.
+
+
+data:
+  gs_vbap        type ty_vbap,
+  gt_vbap        type table of ty_vbap,
+
+  gs_res         type ty_res,
+  gt_res         type table of ty_res,
+
+  ls_data        type ty_res,
+  lt_data        type table of ty_res,
+
+  go_cont        type ref to cl_gui_custom_container,
+  go_alv         type ref to cl_gui_alv_grid,
+  go_simple_cont type ref to cl_gui_container,
+  mt_gridfcat    type lvc_t_fcat.
+
+form prepare_gridfcat.
+  data: ls_fcat type lvc_s_fcat,
+        lv_pos  type i.
+
+  clear ls_fcat.
+  lv_pos = 0.
+  ls_fcat-fieldname = 'KUNNR'.
+  ls_fcat-ref_field = 'KUNNR'.
+  ls_fcat-coltext   = 'заказчик'.
+  ls_fcat-seltext   = 'KUNNR'.
+  ls_fcat-col_pos   = lv_pos.
+  append ls_fcat to mt_gridfcat.
+  clear ls_fcat.
+
+  lv_pos += 1.
+  ls_fcat-fieldname = 'MATNR'.
+  ls_fcat-ref_field = 'MATNR'.
+  ls_fcat-coltext   = 'номер материала'.
+  ls_fcat-seltext   = 'MATNR'.
+  ls_fcat-col_pos   = lv_pos.
+  append ls_fcat to mt_gridfcat.
+  clear ls_fcat.
+
+  lv_pos += 1.
+  ls_fcat-fieldname = 'ARKTX'.
+  ls_fcat-ref_field = 'ARKTX'.
+  ls_fcat-coltext   = 'имя материала'.
+  ls_fcat-seltext   = 'ARKTX'.
+  ls_fcat-col_pos   = lv_pos.
+  append ls_fcat to mt_gridfcat.
+  clear ls_fcat.
+
+  lv_pos += 1."
+  ls_fcat-fieldname = 'KWMENG'.
+  ls_fcat-ref_field = 'KWMENG'.
+  ls_fcat-coltext   = 'количество агр'.
+  ls_fcat-seltext   = 'KWMENG'.
+  ls_fcat-col_pos   = lv_pos.
+  append ls_fcat to mt_gridfcat.
+  clear ls_fcat.
+
+  lv_pos += 1.
+  ls_fcat-fieldname = 'MEINS'.
+  ls_fcat-ref_field = 'MEINS'.
+  ls_fcat-coltext   = 'еденица измерения'.
+  ls_fcat-seltext   = 'MEINS'.
+  ls_fcat-col_pos   = lv_pos.
+  append ls_fcat to mt_gridfcat.
+  clear ls_fcat.
+
+  lv_pos += 1."
+  ls_fcat-fieldname = 'NETWR'.
+  ls_fcat-ref_field = 'NETWR'.
+  ls_fcat-coltext   = 'стоимость агр'.
+  ls_fcat-seltext   = 'NETWR'.
+  ls_fcat-col_pos   = lv_pos.
+  append ls_fcat to mt_gridfcat.
+  clear ls_fcat.
+
+
+
+  call function 'LVC_FIELDCATALOG_MERGE'
+    changing
+      ct_fieldcat            = mt_gridfcat
+    exceptions
+      inconsistent_interface = 1
+      program_error          = 2
+      others                 = 3.
+endform.
+
+form output_alv.
+
+  create object go_cont
+    exporting
+      container_name              = 'CONT'                 " Name of the Screen CustCtrl Name to Link Container To
+    exceptions
+      cntl_error                  = 1                " CNTL_ERROR
+      cntl_system_error           = 2                " CNTL_SYSTEM_ERROR
+      create_error                = 3                " CREATE_ERROR
+      lifetime_error              = 4                " LIFETIME_ERROR
+      lifetime_dynpro_dynpro_link = 5                " LIFETIME_DYNPRO_DYNPRO_LINK
+      others                      = 6.
+  if sy-subrc <> 0.
+    message id sy-msgid type sy-msgty number sy-msgno
+      with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+  if go_cont is  not initial.
+    go_simple_cont = go_cont.
+    perform create_alv changing go_simple_cont.
+  endif.
+
+
+endform.
+
+form create_alv changing co_cont type ref to cl_gui_container.
+
+  perform prepare_gridfcat.
+
+  if go_alv is initial.
+
+    create object go_alv
+      exporting
+        i_parent          = co_cont
+      exceptions
+        error_cntl_create = 1
+        error_cntl_init   = 2
+        error_cntl_link   = 3
+        error_dp_create   = 4
+        others            = 5.
+    if sy-subrc <> 0.
+      message id sy-msgid type sy-msgty number sy-msgno
+                 with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+  endif.
+  if go_alv is not initial.
+
+    go_alv->set_table_for_first_display(
+
+      changing
+        it_outtab                     = gt_res                 " Output Table
+        it_fieldcatalog               = mt_gridfcat               " Field Catalog
+      exceptions
+        invalid_parameter_combination = 1                " Wrong Parameter
+        program_error                 = 2                " Program Errors
+        too_many_lines                = 3                " Too many Rows in Ready for Input Grid
+        others                        = 4
+    ).
+    if sy-subrc <> 0.
+      message id sy-msgid type sy-msgty number sy-msgno
+        with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+
+  endif.
+
+endform.
+
+
+
+start-of-selection.
+
+  select-options:
+    so_matnr for gs_vbap-matnr, " материал
+    so_kunnr for gs_vbap-kunnr. " заказчик
+
+  select
+*    vbap~vbeln
+      vbak~kunnr
+      vbak~audat
+      vbap~matnr
+      vbap~arktx
+      vbap~kwmeng
+      vbap~meins
+      vbap~netwr
+      from vbap
+        inner join vbak on  vbak~vbeln = vbap~vbeln
+      into corresponding fields of table gt_vbap
+        where vbak~kunnr in so_kunnr and vbap~matnr in so_matnr.
+
+  sort gt_vbap by kunnr matnr audat.
+
+*  loop at gt_vbap assigning field-symbol(<fs_delete>).
+*    delete gt_vbap[] where kunnr = ''.
+*  endloop.
+
+  if rb1 = rbSelected.
+
+    data(lv_counter) = 1.
+    loop at gt_vbap into data(ls_vbap).
+      lv_counter += 1.
+      ls_data-kunnr = ls_vbap-kunnr.
+      ls_data-matnr = ls_vbap-matnr.
+      ls_data-arktx = ls_vbap-arktx.
+      ls_data-kwmeng += ls_vbap-kwmeng."sum
+      ls_data-meins = ls_vbap-meins.
+      ls_data-netwr += ls_vbap-netwr."sum
+
+      read table gt_vbap into data(ls_next_data) index lv_counter.
+      if ls_next_data-kunnr = ls_data-kunnr.
+        if ls_next_data-matnr = ls_data-matnr.
+          ls_data-kwmeng += ls_vbap-kwmeng."sum
+          ls_data-netwr += ls_vbap-netwr."sum
+        else.
+          append ls_data to lt_data.
+          clear ls_data.
+        endif.
+        append ls_data to lt_data.
+        clear ls_data.
+      endif.
+
+ENDLOOP.
+
+    move-corresponding lt_data to gt_res.
+      call  screen 901.
+  elseif rb2 = rbSelected.
+    move-corresponding gt_vbap to gt_res.
+  endif.
+
+
+
+  break-point.
+  include zks_exam_status_0901o01.
+  include zks_exam_user_command_0901i01.

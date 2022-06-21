@@ -1,0 +1,241 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_CONT_TEST
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_cont_test.
+
+
+
+data: gr_custom_cont    type ref to cl_gui_custom_container,
+      gr_cont_help11    type ref to cl_gui_container,
+      gr_cont_help12    type ref to cl_gui_container,
+      gr_cont_help13    type ref to cl_gui_container,
+      gr_cont_help14    type ref to cl_gui_container,
+      gr_cont_help21    type ref to cl_gui_container,
+      gr_cont_help22    type ref to cl_gui_container,
+      gr_cont_help23    type ref to cl_gui_container,
+      gr_cont_help24    type ref to cl_gui_container,
+      gr_cont_help31    type ref to cl_gui_container,
+      gr_cont_help32    type ref to cl_gui_container,
+      gr_cont_help33    type ref to cl_gui_container,
+      gr_cont_help34    type ref to cl_gui_container,
+      gr_dock_cont      type ref to cl_gui_docking_container,
+      gr_split_cont     type ref to cl_gui_splitter_container,
+      gr_easysplit_cont type ref to cl_gui_easy_splitter_container,
+      gr_alv11          type ref to cl_gui_alv_grid,
+      gr_alv12          type ref to cl_gui_alv_grid,
+      gr_alv13          type ref to cl_gui_alv_grid,
+      gr_alv14          type ref to cl_gui_alv_grid,
+      gr_alv21          type ref to cl_gui_alv_grid,
+      gr_alv22          type ref to cl_gui_alv_grid,
+      gr_alv23          type ref to cl_gui_alv_grid,
+      gr_alv24          type ref to cl_gui_alv_grid,
+      gr_alv31          type ref to cl_gui_alv_grid,
+      gr_alv32          type ref to cl_gui_alv_grid,
+      gr_alv33          type ref to cl_gui_alv_grid,
+      gr_alv34          type ref to cl_gui_alv_grid.
+
+select * from spfli into table @data(gt_spfli).
+
+call screen 901.
+
+
+form cust_cont.
+
+  create object gr_custom_cont
+    exporting
+*     parent                      =
+      container_name              = 'CONT1'
+*     style                       =
+*     lifetime                    = lifetime_default
+*     repid                       =
+*     dynnr                       =
+*     no_autodef_progid_dynnr     =
+    exceptions
+      cntl_error                  = 1
+      cntl_system_error           = 2
+      create_error                = 3
+      lifetime_error              = 4
+      lifetime_dynpro_dynpro_link = 5
+      others                      = 6.
+  if sy-subrc <> 0.
+    message id sy-msgid type sy-msgty number sy-msgno
+               with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+endform.
+
+form dock_cont.
+  create object gr_dock_cont
+    exporting
+*     parent                      =
+      repid                       = sy-repid
+      dynnr                       = '0901'
+      side                        = cl_gui_docking_container=>dock_at_left
+      extension                   = 400
+*     style                       =
+*     lifetime                    = lifetime_default
+*     caption                     =
+*     metric                      = 0
+*     ratio                       =
+*     no_autodef_progid_dynnr     =
+*     name                        =
+    exceptions
+      cntl_error                  = 1
+      cntl_system_error           = 2
+      create_error                = 3
+      lifetime_error              = 4
+      lifetime_dynpro_dynpro_link = 5
+      others                      = 6.
+  if sy-subrc <> 0.
+    message id sy-msgid type sy-msgty number sy-msgno
+               with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+endform.
+
+form split_cont.
+
+  create object gr_split_cont
+    exporting
+*     link_dynnr        =
+*     link_repid        =
+*     shellstyle        =
+*     left              =
+*     top               =
+*     width             =
+*     height            =
+*     metric            = cntl_metric_dynpro
+*     align             = 15
+      parent            = gr_custom_cont
+      rows              = 3
+      columns           = 4
+*     no_autodef_progid_dynnr =
+*     name              =
+    exceptions
+      cntl_error        = 1
+      cntl_system_error = 2
+      others            = 3.
+  if sy-subrc <> 0.
+    message id sy-msgid type sy-msgty number sy-msgno
+               with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+
+  PERFORM set_alv USING 1 1 CHANGING gr_alv11 gr_cont_help11.
+  PERFORM set_alv USING 1 2 CHANGING gr_alv12 gr_cont_help12.
+  PERFORM set_alv USING 1 3 CHANGING gr_alv13 gr_cont_help13.
+  PERFORM set_alv USING 1 4 CHANGING gr_alv14 gr_cont_help14.
+  PERFORM set_alv USING 2 1 CHANGING gr_alv21 gr_cont_help21.
+  PERFORM set_alv USING 2 2 CHANGING gr_alv22 gr_cont_help22.
+  PERFORM set_alv USING 2 3 CHANGING gr_alv23 gr_cont_help23.
+  PERFORM set_alv USING 2 4 CHANGING gr_alv24 gr_cont_help24.
+  PERFORM set_alv USING 3 1 CHANGING gr_alv31 gr_cont_help31.
+  PERFORM set_alv USING 3 2 CHANGING gr_alv32 gr_cont_help32.
+  PERFORM set_alv USING 3 3 CHANGING gr_alv33 gr_cont_help33.
+  PERFORM set_alv USING 3 4 CHANGING gr_alv34 gr_cont_help34.
+
+endform.
+
+form set_alv using iv_row type i
+                   iv_column type i
+             changing ir_alv type ref to cl_gui_alv_grid
+                      ir_cont type ref to cl_gui_container.
+
+  gr_split_cont->get_container(
+    exporting
+      row       = iv_row                  " Row
+      column    = iv_column                 " Column
+    receiving
+      container = ir_cont                 " Container
+  ).
+
+*  gr_custom_cont_help ?= gr_cont_help.
+
+  create object ir_alv
+    exporting
+*     i_shellstyle      = 0                " Control Style
+*     i_lifetime        =                  " Lifetime
+      i_parent          = ir_cont                 " Parent Container
+*     i_appl_events     = space            " Register Events as Application Events
+*     i_parentdbg       =                  " Internal, Do not Use
+*     i_applogparent    =                  " Container for Application Log
+*     i_graphicsparent  =                  " Container for Graphics
+*     i_name            =                  " Name
+*     i_fcat_complete   = space            " Boolean Variable (X=True, Space=False)
+*     o_previous_sral_handler =
+    exceptions
+      error_cntl_create = 1                " Error when creating the control
+      error_cntl_init   = 2                " Error While Initializing Control
+      error_cntl_link   = 3                " Error While Linking Control
+      error_dp_create   = 4                " Error While Creating DataProvider Control
+      others            = 5.
+  if sy-subrc <> 0.
+    message id sy-msgid type sy-msgty number sy-msgno
+      with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+  ir_alv->set_table_for_first_display(
+    exporting
+*      i_buffer_active               =                  " Buffering Active
+*      i_bypassing_buffer            =                  " Switch Off Buffer
+*      i_consistency_check           =                  " Starting Consistency Check for Interface Error Recognition
+      i_structure_name              = 'SPFLI'                 " Internal Output Table Structure Name
+*      is_variant                    =                  " Layout
+*      i_save                        =                  " Save Layout
+*      i_default                     = 'X'              " Default Display Variant
+*      is_layout                     =                  " Layout
+*      is_print                      =                  " Print Control
+*      it_special_groups             =                  " Field Groups
+*      it_toolbar_excluding          =                  " Excluded Toolbar Standard Functions
+*      it_hyperlink                  =                  " Hyperlinks
+*      it_alv_graphics               =                  " Table of Structure DTC_S_TC
+*      it_except_qinfo               =                  " Table for Exception Quickinfo
+*      ir_salv_adapter               =                  " Interface ALV Adapter
+    changing
+      it_outtab                     = gt_spfli                 " Output Table
+*      it_fieldcatalog               =                  " Field Catalog
+*      it_sort                       =                  " Sort Criteria
+*      it_filter                     =                  " Filter Criteria
+    exceptions
+      invalid_parameter_combination = 1                " Wrong Parameter
+      program_error                 = 2                " Program Errors
+      too_many_lines                = 3                " Too many Rows in Ready for Input Grid
+      others                        = 4
+  ).
+  if sy-subrc <> 0.
+*   message id sy-msgid type sy-msgty number sy-msgno
+*     with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+endform.
+
+FORM easy_split_cont.
+  CREATE OBJECT gr_easysplit_cont
+    exporting
+*      link_dynnr        =                    " Screen Number
+*      link_repid        =                    " Report name
+*      metric            = cntl_metric_dynpro " Metric
+      parent            = gr_custom_cont                   " Parent Container
+*      orientation       = 0                  " Orientation: 0 = Vertical, 1 = Horizontal
+*      sash_position     = 50                 " Position of Splitter Bar (in Percent)
+*      with_border       = 1                  " With Border = 1; Without Border = 0
+*      name              =                    " Name
+    exceptions
+      cntl_error        = 1                  " Control Error
+      cntl_system_error = 2                  " Control System Error
+      others            = 3
+    .
+  if sy-subrc <> 0.
+*   message id sy-msgid type sy-msgty number sy-msgno
+*     with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+
+
+
+ENDFORM.
+
+include zap_cont_test_status_0901o01.
+
+include zap_cont_test_user_command_i01.

@@ -1,0 +1,111 @@
+*----------------------------------------------------------------------*
+***INCLUDE ZAP_SCREEN_TEST_USER_COMMANI01.
+*----------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0901  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+module user_command_0901 input.
+  data: ok_code like sy-ucomm.
+
+  case sy-ucomm.
+    when 'BACK' or'EXIT' or 'CANCEL'.
+      leave program.
+    when 'SHOW'.
+      if sdyn_conn-carrid <> 'AA'.
+        message 'Error' type 'S'.
+      endif.
+      call screen 902
+          starting at 5 5.
+    when others.
+  endcase.
+
+  case abap_true.
+    when gs_radiobutton-var1.
+      gv_input = 1.
+      gv_invisible = 0.
+    when gs_radiobutton-var2.
+      gv_input = 1.
+      gv_invisible = 1.
+    when gs_radiobutton-var3.
+      gv_input = 0.
+      gv_invisible = 1.
+  endcase.
+
+  if gv_button = 1.
+    gv_button = 0.
+  else.
+    gv_button = 1.
+  endif.
+
+endmodule.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0902  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+module user_command_0902 input.
+
+  case sy-ucomm.
+    when 'OK' or 'EXIT'.
+      leave to screen 0.
+    when others.
+  endcase.
+
+endmodule.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+module exit input.
+  DATA: lv_answer TYPE c.
+call function 'POPUP_TO_CONFIRM'
+  exporting
+   TITLEBAR                    = 'Попап'
+*   DIAGNOSE_OBJECT             = ' '
+    text_question               = 'Выйти?'
+   TEXT_BUTTON_1               = 'Да'
+   ICON_BUTTON_1               = ' '
+   TEXT_BUTTON_2               = 'Нет'
+   ICON_BUTTON_2               = ' '
+*   DEFAULT_BUTTON              = '1'
+   DISPLAY_CANCEL_BUTTON       = ''
+*   USERDEFINED_F1_HELP         = ' '
+*   START_COLUMN                = 25
+*   START_ROW                   = 6
+*   POPUP_TYPE                  =
+*   IV_QUICKINFO_BUTTON_1       = ' '
+*   IV_QUICKINFO_BUTTON_2       = ' '
+ IMPORTING
+   ANSWER                      = lv_answer
+* TABLES
+*   PARAMETER                   =
+ EXCEPTIONS
+   TEXT_NOT_FOUND              = 1
+   OTHERS                      = 2
+          .
+
+  CASE lv_answer.
+    WHEN '1'.
+      leave to screen 0.
+    WHEN '2' OR 'A'.
+      MESSAGE 'Continue' TYPE 'S'.
+    WHEN OTHERS.
+  ENDCASE.
+
+
+endmodule.
+*&---------------------------------------------------------------------*
+*&      Module  CHECK  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+module check input.
+
+  if sdyn_conn-carrid <> 'AA'.
+    message 'Error' type 'W'.
+  endif.
+
+endmodule.

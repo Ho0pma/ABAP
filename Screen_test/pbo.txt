@@ -1,0 +1,74 @@
+*----------------------------------------------------------------------*
+***INCLUDE ZAP_SCREEN_TEST_STATUS_0901O01.
+*----------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Module STATUS_0901 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+module status_0901 output.
+  set pf-status 'ZAP'.
+  set titlebar 'ZAP' with sy-uname.
+
+  loop at screen.
+
+*   IF screen-group1 = 'GR1'.
+*     screen-input = .
+**     screen-invisible = 1.
+*     MODIFY SCREEN.
+*   ENDIF.
+
+*   IF screen-name = 'GV_BOX'.
+*     screen-invisible = 1..
+*     MODIFY SCREEN.
+*   ENDIF.
+*    IF screen-group1 = 'GR1'.
+*      IF gs_checkbox-var1 = abap_true.
+*        screen-input = 1.
+*      ELSE.
+*        screen-input = 0.
+*      ENDIF.
+*      MODIFY SCREEN.
+*    ENDIF.
+*
+*    IF screen-name = 'GS_SPFLI-CITYFROM'.
+*      IF gs_checkbox-var2 = abap_true.
+*        screen-invisible = 1.
+*      ELSE.
+*        screen-invisible = 0.
+*      ENDIF.
+*      MODIFY SCREEN.
+*    ENDIF.
+    IF screen-group1 = 'GR1'.
+      screen-input = gv_input.
+      screen-invisible = gv_invisible.
+      MODIFY SCREEN.
+    ENDIF.
+
+    IF screen-name = 'GV_BUTTTON_NAME'.
+      IF gv_button = 1.
+        screen-invisible = 1.
+      ELSE.
+        screen-invisible = 0.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+
+  endloop.
+
+  if spfli-distance > 5000.
+    gv_icon = icon_okay.
+  else.
+    gv_icon = icon_cancel.
+  endif.
+
+endmodule.
+*&---------------------------------------------------------------------*
+*& Module STATUS_0902 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+module status_0902 output.
+  set pf-status 'ZAP2'.
+* SET TITLEBAR 'xxx'.
+endmodule.

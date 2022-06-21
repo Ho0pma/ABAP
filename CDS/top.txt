@@ -1,0 +1,12 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_CDS_TOP
+*&---------------------------------------------------------------------*
+
+class:
+  lcl_app definition deferred.
+
+data:
+      go_salv type ref to cl_salv_table.
+
+data:
+      go_app  type ref to lcl_app.

@@ -1,0 +1,9 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_ALV_TEST_TOP
+*&---------------------------------------------------------------------*
+
+TYPES: gtyp_r_carrid TYPE RANGE OF sbook-carrid.
+
+data: gs_sbook type sbook,
+      gt_sbook type table of sbook,
+      go_alv   TYPE REF TO cl_gui_alv_grid.

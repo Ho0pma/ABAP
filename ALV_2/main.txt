@@ -1,0 +1,23 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_ALV_TEST
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zap_alv_test MESSAGE-ID ZAP_ALV_TEST.
+
+INCLUDE zap_alv_test_top.
+INCLUDE zap_alv_test_sscr.
+INCLUDE zap_alv_test_lcl.
+INCLUDE zap_alv_test_pbo.
+INCLUDE zap_alv_test_pai.
+
+START-OF-SELECTION.
+
+CREATE OBJECT go_main
+  exporting
+    ir_carrid = s_carrid[]
+  .
+
+go_main->select_data( ).
+
+CALL SCREEN 901.

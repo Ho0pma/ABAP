@@ -1,0 +1,420 @@
+*&---------------------------------------------------------------------*
+*& Include          ZIA_FINAL_LCL
+*&---------------------------------------------------------------------*
+class lcl_select definition.
+
+  public section.
+    methods:
+      constructor.
+
+  private section.
+    methods:
+      select_prepare_data,
+      init_grid,
+      display,
+      select_main_data,
+      prepare_fieldcat changing ct_fcat type lvc_t_fcat,
+      single_cond importing iv_dbtab   type string
+                            iv_dbfield type string
+                            iv_low     type string,
+
+      multiple_cond importing iv_dbtab   type string
+                              iv_dbfield type string
+                              iv_low     type string
+                              iv_high    type string,
+
+      spec_symbol_cond importing iv_dbtab   type string
+                                 iv_dbfield type string
+                                 iv_low     type string,
+      and,
+      or ,
+      not ,
+      check_cond,
+      make_cond importing iv_dbtab     type string
+                                iv_dbfield   type string
+                                iv_modeparam type zia_mode
+                                iv_sign      type c
+                                iv_opti      type string
+                                iv_low       type string
+                                iv_paramname type string
+                                iv_high      type string
+                     .
+
+
+    data:
+      mo_custom_containter type ref to cl_gui_custom_container,
+      mo_grid              type ref to cl_gui_alv_grid.
+
+
+    data: gt_cond  type standard table of zia_cond_tab,
+          gt_param type standard table of zia_param_tab.
+
+    data: gv_where_select type string.
+    data: ls_where_select type sbook.
+
+    types: begin of gty_outtab,
+             carrid type s_carr_id,
+             connid type s_conn_id,
+           end of gty_outtab.
+
+    data: gt_outtab type standard table of gty_outtab.
+
+    data: lv_first_flag type abap_bool value abap_false.
+
+    data: lt_fcat type lvc_t_fcat.
+
+    data: lo_struct          type ref to cl_abap_structdescr,
+          lv_last_field      type string,
+          lv_sign_flag       type abap_bool value abap_false,
+          lv_counter         type i,
+          lv_sign_param_flag type abap_bool value abap_false,
+          lv_exist_flag      type abap_bool value abap_false
+          .
+
+
+endclass.
+
+
+
+class lcl_select implementation.
+
+  method constructor.
+
+    select_prepare_data( ).
+    check_cond( ).
+    select_main_data( ).
+    init_grid( ).
+    prepare_fieldcat(
+      changing
+        ct_fcat = lt_fcat
+    ).
+    display( ).
+
+  endmethod.
+
+  method select_prepare_data.
+    select *
+  from zia_cond_tab
+into corresponding fields of table @gt_cond.
+    sort gt_cond by dbfield.
+
+    select *
+      from zia_param_tab
+    into corresponding fields of table @gt_param.
+    sort gt_param by paramname.
+  endmethod.
+
+  method init_grid.
+
+    if mo_custom_containter is initial.
+      create object mo_custom_containter
+        exporting
+*         parent                      =                  " Parent container
+          container_name              = 'CONT1'                 " Name of the Screen CustCtrl Name to Link Container To
+*         style                       =                  " Windows Style Attributes Applied to this Container
+*         lifetime                    = lifetime_default " Lifetime
+*         repid                       =                  " Screen to Which this Container is Linked
+*         dynnr                       =                  " Report To Which this Container is Linked
+*         no_autodef_progid_dynnr     =                  " Don't Autodefined Progid and Dynnr?
+        exceptions
+          cntl_error                  = 1                " CNTL_ERROR
+          cntl_system_error           = 2                " CNTL_SYSTEM_ERROR
+          create_error                = 3                " CREATE_ERROR
+          lifetime_error              = 4                " LIFETIME_ERROR
+          lifetime_dynpro_dynpro_link = 5                " LIFETIME_DYNPRO_DYNPRO_LINK
+          others                      = 6.
+      if sy-subrc <> 0.
+        message id sy-msgid type sy-msgty number sy-msgno
+          with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      endif.
+
+    endif.
+
+    if mo_custom_containter is not initial.
+      if mo_grid is initial.
+
+        create object mo_grid
+          exporting
+*           i_shellstyle      = 0                " Control Style
+*           i_lifetime        =                  " Lifetime
+            i_parent          = mo_custom_containter                " Parent Container
+*           i_appl_events     = space            " Register Events as Application Events
+*           i_parentdbg       =                  " Internal, Do not Use
+*           i_applogparent    =                  " Container for Application Log
+*           i_graphicsparent  =                  " Container for Graphics
+*           i_name            =                  " Name
+*           i_fcat_complete   = space            " Boolean Variable (X=True, Space=False)
+*           o_previous_sral_handler =
+          exceptions
+            error_cntl_create = 1                " Error when creating the control
+            error_cntl_init   = 2                " Error While Initializing Control
+            error_cntl_link   = 3                " Error While Linking Control
+            error_dp_create   = 4                " Error While Creating DataProvider Control
+            others            = 5.
+        if sy-subrc <> 0.
+          message id sy-msgid type sy-msgty number sy-msgno
+            with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+        endif.
+
+      endif.
+    endif.
+
+  endmethod.
+
+  method display.
+    mo_grid->set_table_for_first_display(
+*   exporting
+*        i_buffer_active               =                  " Buffering Active
+*        i_bypassing_buffer            =                  " Switch Off Buffer
+*        i_consistency_check           =                  " Starting Consistency Check for Interface Error Recognition
+*     i_structure_name              = 'SBOOK'                 " Internal Output Table Structure Name
+*        is_variant                    =                  " Layout
+*        i_save                        =                  " Save Layout
+*        i_default                     = 'X'              " Default Display Variant
+*        is_layout                     =                  " Layout
+*        is_print                      =                  " Print Control
+*        it_special_groups             =                  " Field Groups
+*        it_toolbar_excluding          =                  " Excluded Toolbar Standard Functions
+*        it_hyperlink                  =                  " Hyperlinks
+*        it_alv_graphics               =                  " Table of Structure DTC_S_TC
+*        it_except_qinfo               =                  " Table for Exception Quickinfo
+*        ir_salv_adapter               =                  " Interface ALV Adapter
+   changing
+     it_outtab                     = gt_outtab                 " Output Table
+        it_fieldcatalog               = lt_fcat                " Field Catalog
+*        it_sort                       =                  " Sort Criteria
+*        it_filter                     =                  " Filter Criteria
+   exceptions
+     invalid_parameter_combination = 1                " Wrong Parameter
+     program_error                 = 2                " Program Errors
+     too_many_lines                = 3                " Too many Rows in Ready for Input Grid
+     others                        = 4
+ ).
+    if sy-subrc <> 0.
+      message id sy-msgid type sy-msgty number sy-msgno
+        with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    endif.
+  endmethod.
+
+  method select_main_data.
+
+    select sbook~carrid, sbook~connid
+    from sbook
+    inner join spfli on sbook~carrid = spfli~carrid and sbook~connid = spfli~connid
+    into corresponding fields of table @gt_outtab
+    where (gv_where_select).
+
+    sort gt_outtab.
+    delete adjacent duplicates from gt_outtab.
+
+  endmethod.
+
+  method prepare_fieldcat.
+
+    data: ls_fcat type lvc_s_fcat.
+
+    ls_fcat-fieldname = 'CARRID'.
+    ls_fcat-ref_field = 'CARRID'.
+    ls_fcat-coltext = 'CARRID'.
+    ls_fcat-seltext = 'CARRID'.
+    ls_fcat-col_pos = lines( ct_fcat ) + 1 .
+    append ls_fcat to ct_fcat.
+    clear ls_fcat.
+
+    ls_fcat-fieldname = 'CONNID'.
+    ls_fcat-ref_field = 'CONNID'.
+    ls_fcat-coltext = 'CONNID'.
+    ls_fcat-seltext = 'CONNID'.
+    ls_fcat-col_pos = lines( ct_fcat ) + 1 .
+    append ls_fcat to ct_fcat.
+    clear ls_fcat.
+
+  endmethod.
+
+  method single_cond.
+    gv_where_select &&= iv_dbtab && |~| && iv_dbfield && | |
+      && |=| && | | && |'| && iv_low && |'|.
+  endmethod.
+
+  method multiple_cond.
+    gv_where_select &&= iv_dbtab && |~| && iv_dbfield && | |
+      && |between| && | | && |'| && iv_low && |'| && | | && |and|
+      && | | && |'| && iv_high && |'|.
+  endmethod.
+
+  method spec_symbol_cond.
+    gv_where_select &&= iv_dbtab && |~| && iv_dbfield && | |
+      && |=| && | | && iv_low.
+  endmethod.
+
+  method and.
+    gv_where_select &&= 'AND'.
+  endmethod.
+
+  method or.
+    gv_where_select &&= | | && 'OR' && | |.
+  endmethod.
+
+  method not.
+    gv_where_select &&= 'NOT' && | |.
+  endmethod.
+
+
+
+  method check_cond.
+
+    gv_where_select &&= '(' && | |.
+
+    loop at gt_cond assigning field-symbol(<gt_cond>).
+      lo_struct ?= cl_abap_typedescr=>describe_by_name( <gt_cond>-dbtab ).
+      assign lo_struct->components to field-symbol(<fields>).
+
+      loop at <fields> assigning field-symbol(<fs_fields>).
+        if <gt_cond>-dbfield = <fs_fields>-name.
+          lv_exist_flag = abap_true.
+        endif.
+      endloop.
+
+      if lv_exist_flag = abap_true.
+        case <gt_cond>-modeparam.
+          when 1.
+            make_cond(
+              exporting
+                iv_dbtab     = conv #( <gt_cond>-dbtab )
+                iv_dbfield   = conv #( <gt_cond>-dbfield )
+                iv_modeparam = conv #( <gt_cond>-modeparam )
+                iv_sign      = conv #( <gt_cond>-sign )
+                iv_opti      = conv #( <gt_cond>-opti )
+                iv_low       = conv #( <gt_cond>-low )
+                iv_paramname = conv #( <gt_cond>-paramname )
+                iv_high      = conv #( <gt_cond>-high )
+            ).
+          when 2.
+            loop at gt_param assigning field-symbol(<gt_param>) where paramname = <gt_cond>-paramname.
+              make_cond(
+             exporting
+               iv_dbtab     = conv #( <gt_cond>-dbtab )
+               iv_dbfield   = conv #( <gt_cond>-dbfield )
+               iv_modeparam = conv #( <gt_cond>-modeparam )
+               iv_sign      = conv #( <gt_param>-sign )
+               iv_opti      = conv #( <gt_param>-opti )
+               iv_low       = conv #( <gt_param>-low )
+               iv_paramname = conv #( <gt_param>-paramname )
+               iv_high      = conv #( <gt_param>-high )
+           ).
+            endloop.
+
+
+          when others.
+        endcase.
+      endif.
+
+      clear lv_exist_flag.
+
+    endloop.
+    gv_where_select &&= | | && ')'.
+  endmethod.
+
+  method make_cond.
+    data: mv_dbtab     type string,
+          mv_dbfield   type string,
+          mv_modeparam type zia_mode,
+          mv_sign      type c,
+          mv_opti      type string,
+          mv_low       type string,
+          mv_paramname type string,
+          mv_high      type string.
+
+
+    mv_dbtab    = iv_dbtab.
+    mv_dbfield   = iv_dbfield.
+    mv_modeparam = iv_modeparam.
+    mv_sign      = iv_sign.
+    mv_opti      = iv_opti.
+    mv_low       = iv_low.
+    mv_paramname = iv_paramname.
+    mv_high      = iv_high.
+
+    if lv_last_field is initial. "Присвоить значение последнего поля
+      if mv_sign = 'E'.
+        not( ).
+        lv_sign_flag = abap_true.
+      endif.
+
+      if mv_high is initial.
+        if mv_low = '*' or mv_low = '%'.
+          spec_symbol_cond(
+            exporting
+              iv_dbtab   = mv_dbtab
+              iv_dbfield = mv_dbfield
+              iv_low     = mv_low
+          ).
+        endif.
+        single_cond(
+          exporting
+            iv_dbtab   = mv_dbtab
+            iv_dbfield = mv_dbfield
+            iv_low     = mv_low
+        ).
+      else.
+        multiple_cond(
+          exporting
+            iv_dbtab   = mv_dbtab
+            iv_dbfield = mv_dbfield
+            iv_low     = mv_low
+            iv_high    = mv_high
+        ).
+      endif.
+      lv_last_field = mv_dbfield.
+    else.
+
+      if lv_sign_flag = abap_true.
+        gv_where_select &&= | | && ')' && | |.
+        and( ).
+        gv_where_select &&= | | && '(' && | |.
+        clear lv_sign_flag.
+      elseif lv_sign_flag = abap_false and lv_last_field = mv_dbfield.
+        or( ).
+
+      elseif lv_sign_flag = abap_false and lv_last_field <> mv_dbfield.
+        gv_where_select &&= | | && ')' && | |.
+        and( ).
+        gv_where_select &&= | | && '(' && | |.
+      endif.
+
+      if mv_sign = 'E'.
+        not( ).
+        lv_sign_flag = abap_true.
+      endif.
+
+      if mv_high is initial.
+        if mv_low = '*' or iv_low = '%'.
+          spec_symbol_cond(
+            exporting
+              iv_dbtab   = mv_dbtab
+              iv_dbfield = mv_dbfield
+              iv_low     = mv_low
+          ).
+        endif.
+        single_cond(
+          exporting
+            iv_dbtab   = mv_dbtab
+            iv_dbfield = mv_dbfield
+            iv_low     = mv_low
+        ).
+      else.
+        multiple_cond(
+          exporting
+            iv_dbtab   = mv_dbtab
+            iv_dbfield = mv_dbfield
+            iv_low     = mv_low
+            iv_high    = mv_high
+        ).
+      endif.
+
+      lv_last_field = mv_dbfield.
+    endif.
+
+  endmethod.
+
+endclass.

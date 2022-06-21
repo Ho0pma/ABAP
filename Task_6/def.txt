@@ -1,0 +1,83 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_TASK6_DEF
+*&---------------------------------------------------------------------*
+
+class lcl_view_handler definition.
+
+  public section.
+
+    methods:
+      handle_double_click
+        for event double_click of cl_gui_alv_grid
+        importing e_row e_column.
+    data:
+          ls_cellcolor type lvc_s_scol,
+          mo_view      type ref to lcl_view.
+
+endclass.
+
+class lcl_view definition.
+
+  public section.
+
+    class-methods:
+        get_instance
+          returning value(ro_instance) type ref to lcl_view.
+
+    class-data:
+      mo_instance type ref to lcl_view.
+
+    methods:
+      constructor,
+      prepare_fieldcat,
+      init_containers,
+      init_alv_grid,
+      display,
+      refresh.
+
+    data:
+      "Контейнеры
+          mo_custom_containter_tab2 type ref to cl_gui_custom_container,
+
+       "Грид
+          mo_grid_tab2 type ref to cl_gui_alv_grid,
+
+          lt_fcat_tab2     type lvc_t_fcat.
+
+    constants:
+          mo_custom_container_name(4) type c value 'CONT'.
+
+endclass.
+
+class lcl_app definition.
+
+  public section.
+
+    types: tr_fldate type range of sbook-fldate.
+
+    methods:
+
+      constructor
+        importing
+          iv_carrid type spfli-carrid
+          iv_fldate type tr_fldate,
+
+      screen_0100_pbo,
+      screen_0100_pai importing iv_ucomm type sy-ucomm,
+
+      start,
+      select_data,
+      check_sel.
+
+
+
+    data:
+          mv_carrid type spfli-carrid,
+          mv_fldate type tr_fldate,
+
+      "ссылка на класс lcl_view
+          mo_view type ref to lcl_view.
+
+
+
+endclass.

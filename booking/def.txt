@@ -1,0 +1,102 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_BOOKING_DEF
+*&---------------------------------------------------------------------*
+class lcl_view_handler definition.
+  public section.
+    methods:
+      handle_double_click
+        for event double_click of cl_gui_alv_grid
+        importing e_row e_column.
+    data:
+          ls_cellcolor type lvc_s_scol,
+          mo_view      type ref to lcl_view.
+endclass.
+
+class lcl_view definition friends lcl_view_handler.
+
+  public section.
+
+    class-methods:
+       get_instance
+         returning value(ro_instance) type ref to lcl_view.
+
+    methods:
+      constructor,
+      seat_numbers,
+      make_plane_seating,
+      prepare_fieldcat changing ct_fcat type lvc_t_fcat,
+      prepare_layout   changing cs_layo type lvc_s_layo,
+      init_containers,
+      init_alv_grid,
+*      init_alv_grid_result,
+*      prepare_fieldcat_result,
+      display,
+      refresh.
+
+    class-data:
+      mo_instance type ref to lcl_view.
+
+    data:
+
+      "Cсылка на класс lcl_view_handler
+          mo_handler type ref to lcl_view_handler,
+
+      "Контейнеры
+          mo_custom_containter type ref to cl_gui_custom_container,
+          mo_split_cont        type ref to cl_gui_easy_splitter_container,
+
+      "Грид
+          mo_grid         type ref to cl_gui_alv_grid,
+          mo_grid_result  type ref to cl_gui_alv_grid,
+          ls_layo         type lvc_s_layo,
+          ls_layo_res     type lvc_s_layo,
+          lt_fcat         type lvc_t_fcat,
+          lt_fcat_res     type lvc_t_fcat,
+
+
+      "переменные для make_plane_seating и seat_numbers
+          mv_seat_class       type c length 1, " Класс места
+          lv_index_seating    type i,          " Кол-во мест в одном ряду
+          lv_seat_num         type i,          " Цифра ряда(места)
+          lv_seat_num_last    type i,          " Последняя цифра ряда
+          lv_alphabet_counter type i,          " Указатель алфавита
+          lv_seat_char        type c length 1, " Буква места
+          lv_seat_fieldname   type string,     " Переменная для хранения имени поля таблицы
+
+      "Окраска ячеек
+          cellcolors type lvc_t_scol.
+
+    constants:
+          mo_custom_container_name(4) type c value 'CONT'.
+
+endclass.
+
+class lcl_app definition.
+
+  public section.
+
+    methods:
+      constructor
+        importing
+          iv_carrid type s_carr_id
+          iv_connid type s_conn_id
+          iv_fldate type s_date
+          iv_bookid type s_book_id,
+*          iv_class  type s_class,
+
+      start,
+      select_data,
+      screen_0100_pbo,
+      screen_0100_pai importing iv_ucomm type sy-ucomm.
+
+    data:
+          mv_carrid type s_carr_id,
+          mv_connid type s_conn_id,
+          mv_fldate type s_date,
+          mv_bookid type s_book_id,
+*          mv_class  type s_class,
+
+    "ссылка на класс lcl_view
+          mo_view type ref to lcl_view.
+
+endclass.

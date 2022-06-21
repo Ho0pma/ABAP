@@ -1,0 +1,58 @@
+*&---------------------------------------------------------------------*
+*& Include          ZAP_TASK6_TOP
+*&---------------------------------------------------------------------*
+class:
+  lcl_app definition deferred,
+  lcl_view definition deferred.
+
+data: go_app type ref to lcl_app.
+
+*--------------------------------------------------------------------*
+types: begin of gty_tab_two,
+        carrid      type s_carr_id,
+        connid      type s_conn_id,
+        fldate      type s_date,
+        bookid      type s_book_id,
+        customid    type s_customer,
+        invoice     type s_invflag,
+        class       type s_class,
+        loccuram    type s_l_cur_pr,
+        loccurkey   type s_curr,
+        passname    type s_passname,
+        order_date  type s_bdate,
+        agencynum   type s_agncynum,
+       end of gty_tab_two.
+
+types:
+      gtt_tab_two type table of gty_tab_two,
+      gts_tab_two type gty_tab_two.
+
+data: gt_tab_two type gtt_tab_two,
+      gs_tab_two type gts_tab_two.
+
+*--------------------------------------------------------------------*
+types: begin of gty_tab_one,
+         carrid     type s_carr_id,
+         carrname   type s_carrname,
+         url        type s_carrurl,
+         fldate     type s_date,
+         connid     type s_conn_id,
+       end of gty_tab_one.
+
+types: gtt_tab_one type standard table of gty_tab_one,
+       gts_tab_one type gty_tab_one.
+
+data:
+      gt_tab_one type gtt_tab_one,
+      gs_tab_one type gts_tab_one.
+*--------------------------------------------------------------------*
+
+data: ok_code type sy-ucomm,
+      gv_dynnr type sy-dynnr.
+
+controls container type tabstrip.
+*--------------------------------------------------------------------*
+*для селект-опшн
+data: gs_sbook type sbook.
+*--------------------------------------------------------------------*
+data: go_connid type s_conn_id.

@@ -1,0 +1,123 @@
+*&---------------------------------------------------------------------*
+*& Report ZRS_EXAM
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+report zrs_exam.
+
+tables: spfli.
+
+parameters: pa_carr type spfli-carrid.
+
+types: begin of tt_struct,
+         carrid    type spfli-carrid,
+         connid    type spfli-connid,
+         fldate    type sflight-fldate,
+         price     type sflight-price,
+         currency  type sflight-currency,
+         carrname  type scarr-carrname,
+         agencynum type sbook-agencynum,
+         name      type stravelag-name,
+       end of tt_struct.
+
+data: gs_final    type tt_struct,
+      gt_final    type standard table of tt_struct,
+      go_salv     type ref to cl_salv_table,
+      alv_columns type ref to cl_salv_columns_table,
+      alv_column  type ref to cl_salv_column_table.
+
+data: lr_functions type ref to cl_salv_functions_list,
+      l_text       type string,
+      l_icon       type string.
+
+data: gr_layout type ref to cl_salv_layout.
+data: key type salv_s_layout_key.
+
+start-of-selection.
+
+  with
+  +spfli as (
+  select distinct carrid, connid from spfli where carrid = @pa_carr
+  ),
+
+  +sflight as (
+      select distinct
+      carrid, connid, fldate, price, currency
+      from sflight
+      where carrid in
+      ( select distinct carrid from +spfli )
+      and connid in
+      ( select distinct connid from +spfli )
+  ),
+
+    +scarr as (
+      select distinct carrid, carrname
+      from scarr
+      where carrid in
+      ( select distinct carrid from +sflight )
+    ),
+
+    +sbook as (
+      select distinct carrid, connid, agencynum
+      from sbook
+      where carrid in
+      ( select distinct carrid from +sflight )
+      and connid in
+      ( select distinct connid from +sflight )
+    ),
+
+    +stravelag as (
+      select distinct agencynum, name
+      from stravelag
+      where agencynum in
+      ( select distinct agencynum from +sbook )
+    ),
+
+  "Final query
+  +result as (
+    select distinct
+      spf~carrid, spf~connid,
+      sfl~fldate, sfl~price, sfl~currency,
+      sca~carrname,
+      sbo~agencynum,
+      str~name
+    from +spfli as spf
+    left join +sflight as sfl on sfl~carrid = spf~carrid and sfl~connid = spf~connid
+    left join +scarr as sca on sca~carrid = spf~carrid
+    left join +sbook as sbo on sbo~carrid = spf~carrid and sbo~connid = spf~connid
+    left join +stravelag as str on str~agencynum = sbo~agencynum
+
+  )
+
+  "Select into final table
+    select *
+           from +result
+           into table @gt_final.
+
+
+  "Create SALV using factory method
+  call method cl_salv_table=>factory
+    importing
+      r_salv_table = go_salv
+    changing
+      t_table      = gt_final.
+
+
+  "Set a toolbar
+  lr_functions = go_salv->get_functions( ).
+  lr_functions->set_default( abap_true ).
+
+  "Enable layout saving
+  gr_layout = go_salv->get_layout( ).
+  key-report = sy-repid.
+  gr_layout->set_key( key ).
+
+  gr_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+
+  "Hide AGENCYNUM column
+  alv_columns = go_salv->get_columns( ).
+  alv_column ?= alv_columns->get_column( 'AGENCYNUM' ).
+  alv_column->set_visible( abap_false ).
+
+  "Display SALV
+  go_salv->display( ).

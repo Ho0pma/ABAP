@@ -1,0 +1,38 @@
+*&---------------------------------------------------------------------*
+*& Report ZAP_SALV_TEST
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZAP_SALV_TEST.
+
+DATA: go_alv TYPE REF TO cl_salv_table,
+      gt_data TYPE TABLE OF sbook,
+      go_layout TYPE REF TO cl_salv_layout.
+
+PARAMETERS: p_car TYPE sbook-carrid.
+
+START-OF-SELECTION.
+
+  SELECT *
+    FROM sbook
+    INTO TABLE gt_data
+    WHERE carrid = p_car.
+
+  cl_salv_table=>factory(
+*    exporting
+*      list_display   = if_salv_c_bool_sap=>false " ALV Displayed in List Mode
+*      r_container    =                           " Abstract Container for GUI Controls
+*      container_name =
+    importing
+      r_salv_table   = go_alv                          " Basis Class Simple ALV Tables
+    changing
+      t_table        = gt_data
+  ).
+
+  go_alv->get_functions( )->set_all(
+*      value = if_salv_c_bool_sap=>true
+  ).
+
+  go_layout = go_alv->get_layout( ).
+
+  go_alv->display( ).
